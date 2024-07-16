@@ -82,6 +82,29 @@ class MonodepthOptions:
                                  type=int,
                                  help="frames to load",
                                  default=[0, -1, 1])
+        # added by rema for training
+
+        self.parser.add_argument("--inpaint_pseudo_gt_dir", type=str,
+                                 help='path to the pseudo gt directory',
+                                 default=None)
+        self.parser.add_argument("--flipping", help="if set, uses flipping",
+                                 action="store_true")
+        self.parser.add_argument("--rotating", help="if set, uses rotating",
+                                 action="store_true")
+        self.parser.add_argument("--light_in_depth", help="if set, uses light in depth",
+                                 action="store_true")
+        self.parser.add_argument("--input_mask_path", type=str,
+                                 help='path to the input mask',
+                                 default=None)
+        self.parser.add_argument("--distorted", help="if set, uses distorted intrinsics",
+                                 action="store_true")
+        self.parser.add_argument("--config", type=str,
+                                 help='path to the config file',
+                                 default=None)
+        self.parser.add_argument("--aug_type", type=str,
+                                 help='type of data augmentation',
+                                 default='',
+                                 choices=['', 'add', 'rem', 'addrem'])
 
         # OPTIMIZATION options
         self.parser.add_argument("--batch_size",
@@ -182,25 +205,6 @@ class MonodepthOptions:
                                  help="if set will perform the flipping post processing "
                                       "from the original monodepth paper",
                                  action="store_true")
-        self.parser.add_argument("--distorted", help="if set, uses distorted intrinsics",
-                                 action="store_true")
-        self.parser.add_argument("--config", type=str,
-                                 help='path to the config file',
-                                 default=None)
-        self.parser.add_argument("--inpaint_pseudo_gt_dir", type=str,
-                                 help='path to the pseudo gt directory',
-                                 default=None)
-        self.parser.add_argument("--flipping", help="if set, uses flipping",
-                                 action="store_true")
-        self.parser.add_argument("--rotating", help="if set, uses rotating",
-                                 action="store_true")
-        self.parser.add_argument("--input_mask_path", type=str, default=None,)
-        self.parser.add_argument("--light_in_depth", help="if set, uses light in depth",
-                                 action="store_true")
-        self.parser.add_argument("--aug_type", type=str,
-                                 help='type of data augmentation',
-                                 default='',
-                                 choices=['', 'add', 'rem', 'addrem'])
 
         
         
