@@ -81,4 +81,7 @@ CUDA_VISIBLE_DEVICES=3 nohup python test_simple.py --image_path /media/rema/data
 
 #After getting full dataset and fixing val train swapped bug
 
-CUDA_VISIBLE_DEVICES=1 nohup python train.py --config  /media/rema/configs/IID/finetuned_mono_hkfull_288.json &
+CUDA_VISIBLE_DEVICES=1 nohup python train.py --config  /raid/rema/configs/IID/finetuned_mono_hkfull_288.json > IID_fullhk_288.log 2>&1 &
+CUDA_VISIBLE_DEVICES=2 nohup python train.py --config  /raid/rema/configs/IID/finetuned_mono_hkfull_288_add.json > IID_fullhk_288_add.log 2>&1 &
+CUDA_VISIBLE_DEVICES=3 nohup python train.py --config  /raid/rema/configs/IID/finetuned_mono_hkfull_288_addrem.json > IID_fullhk_288_addrem.log 2>&1 &
+CUDA_VISIBLE_DEVICES=0 nohup python train.py --config  /raid/rema/configs/IID/finetuned_mono_hkfull_288_rem.json > IID_fullhk_288_rem.log 2>&1 &

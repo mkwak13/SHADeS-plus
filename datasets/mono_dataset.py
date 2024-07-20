@@ -10,7 +10,10 @@ from PIL import ImageFile
 import torch
 import torch.utils.data as data
 from torchvision import transforms
+import torchvision
 from torchvision.transforms import functional as F
+from typing import List, Optional, Tuple
+
 
 ImageFile.LOAD_TRUNCATED_IMAGES=True
 
@@ -83,6 +86,37 @@ class MonoDataset(data.Dataset):
                                                interpolation=self.interp)
         self.load_depth = self.check_depth()
 
+    def custom_get_params(self,
+        brightness: Optional[List[float]],
+        contrast: Optional[List[float]],
+        saturation: Optional[List[float]],
+        hue: Optional[List[float]],
+    ) -> Tuple[torch.Tensor, Optional[float], Optional[float], Optional[float], Optional[float]]:
+        """Get the parameters for the randomized transform to be applied on image.
+
+        Args:
+            brightness (tuple of float (min, max), optional): The range from which the brightness_factor is chosen
+                uniformly. Pass None to turn off the transformation.
+            contrast (tuple of float (min, max), optional): The range from which the contrast_factor is chosen
+                uniformly. Pass None to turn off the transformation.
+            saturation (tuple of float (min, max), optional): The range from which the saturation_factor is chosen
+                uniformly. Pass None to turn off the transformation.
+            hue (tuple of float (min, max), optional): The range from which the hue_factor is chosen uniformly.
+                Pass None to turn off the transformation.
+
+        Returns:
+            tuple: The parameters used to apply the randomized transform
+            along with their random order.
+        """
+        fn_idx = torch.randperm(4)
+
+        b = None if brightness is None else float(torch.empty(1).uniform_(brightness[0], brightness[1]))
+        c = None if contrast is None else float(torch.empty(1).uniform_(contrast[0], contrast[1]))
+        s = None if saturation is None else float(torch.empty(1).uniform_(saturation[0], saturation[1]))
+        h = None if hue is None else float(torch.empty(1).uniform_(hue[0], hue[1]))
+
+        return fn_idx, b, c, s, h
+    
     def preprocess(self, inputs, do_color_aug):
         """Resize colour images to the required scales and augment if required
 
@@ -98,8 +132,12 @@ class MonoDataset(data.Dataset):
                     inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])                
         
         if do_color_aug:
-             fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = transforms.ColorJitter.get_params(
-                self.brightness, self.contrast, self.saturation, self.hue)
+            if torchvision.__version__ == "0.8.2":
+                fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = self.custom_get_params(
+                    self.brightness, self.contrast, self.saturation, self.hue)
+            else:
+                fn_idx, brightness_factor, contrast_factor, saturation_factor, hue_factor = transforms.ColorJitter.get_params(
+                    self.brightness, self.contrast, self.saturation, self.hue)
 
         for k in list(inputs):
             f = inputs[k]
