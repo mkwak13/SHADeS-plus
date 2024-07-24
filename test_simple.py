@@ -218,7 +218,7 @@ def test_simple(args, seq):
         # Searching folder for images
         print(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
         paths = glob.glob(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
-        output_directory = os.path.join(args.output_path, args.method, args.model_name, seq)
+        output_directory = os.path.join(args.output_path, args.method, args.model_name, args.type_data, seq)
         os.makedirs(output_directory, exist_ok=True)
         if args.method == "IID" and args.decompose:
             os.makedirs(os.path.join(output_directory, "decomposed"), exist_ok=True)
@@ -281,10 +281,10 @@ def test_simple(args, seq):
             pred_depth = (1/disp_resized).squeeze().cpu().numpy()
 
             if args.save_depth:
-                if args.input_mask is not None:
-                    input_mask_np = input_mask[0, 0, :, :].numpy()
-                    pred_depth[input_mask_np == 0] = 0
-                    pred_depth[pred_depth > 0.3] = 0 #IMPORTANT:remove in some cases!
+                # if args.input_mask is not None:
+                    # input_mask_np = input_mask[0, 0, :, :].numpy()
+                    # pred_depth[input_mask_np == 0] = 0
+                pred_depth[pred_depth > 0.8] = 0 #IMPORTANT:remove in some cases!
                 max_value = np.max(pred_depth)
                 trip_im = pil.fromarray(np.stack((pred_depth*255/max_value,)*3, axis=-1).astype(np.uint8))
                 # trip_im.save("outputimage.png")
@@ -417,12 +417,24 @@ if __name__ == '__main__':
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(['video', 'mean_rmse', 'mean_rmse_masked'])
     
+    args.type_data = ""
     # Check if args.seq is set to 'all'
-    if args.seq == ['all']:
+    if os.path.isdir(args.image_path) and args.seq == ['all']:
         # List all folders in args.image_path
         sequences = sorted([folder for folder in os.listdir(args.image_path) if os.path.isdir(os.path.join(args.image_path, folder))])
-    else:
+    elif os.path.isdir(args.image_path):
         sequences = args.seq
+    elif os.path.isfile(args.image_path) and args.image_path.endswith('.txt'):
+        if args.image_path.endswith('inpainted.txt'):
+            args.type_data = "hkinpainted"
+        else:
+            args.type_data = "hk"
+        # Read list of image directories:
+        with open(args.image_path) as f:
+            images = f.read().splitlines()
+        # Extract unique last folder names directly
+        sequences = list({os.path.basename(os.path.normpath(os.path.split(path)[0])) for path in images})
+        args.image_path = os.path.dirname(os.path.dirname(images[0]))
     
     for seq in sequences:
         mean_errors, mean_errors_masked = test_simple(args, seq)

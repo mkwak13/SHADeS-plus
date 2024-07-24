@@ -13,7 +13,7 @@ def highlight_min_max(s):
 
 def combine_stats(df, methods, augmentations):
     # Using a shorter approach to calculate mean and median for each configuration
-    mean_median_stats = df.agg(['mean', 'median']).T
+    mean_median_stats = df.drop(columns = ['video']).agg(['mean', 'median']).T
     stats = {}
     for method in methods:
         # Calculate stats for each method
@@ -22,21 +22,28 @@ def combine_stats(df, methods, augmentations):
         stats[method] = method_stats[['mean', 'median']]
 
     # Combining the stats
-    comb_stats = pd.concat(method_stats['augmentation']+[stats[method] for method in methods], axis=1)
-    comb_stats.columns = [f'{method}_{stat}' for method in methods for stat in ['mean', 'median']]
+    # Convert method_stats['augmentation'] to a DataFrame
+    augmentation_df = pd.DataFrame(method_stats['augmentation'])
+
+    # Concatenate stats DataFrames from the list comprehension
+    stats_df = pd.concat([stats[method] for method in methods], axis=1)
+
+    # Concatenate augmentation_df with stats_df side by side
+    comb_stats = pd.concat([augmentation_df, stats_df], axis=1)
+    comb_stats.columns = ["augmentations"]+[f'{method}_{stat}' for method in methods for stat in ['mean', 'median']]
 
     return comb_stats
 
 # Read each file into a DataFrame
-IID_pretrained = True
+IID_pretrained = False
 
-augmentations = [''] #['_', '_add', '_rem', '_addrem']
-methods = ['IID'] #['monodepth2', 'monovit', 'IID']
+augmentations = ['', '_add', '_rem', '_addrem'] #['']
+methods = ['monodepth2', 'monovit', 'IID'] #['IID'] 
 
 method_strings = "[!s]*" # *mono* or *IID*
 clipped = True
 distorted = False
-singlescale = False
+singlescale = True
 specscale = False
 
 if singlescale: scaling = "/singlescale" 
@@ -51,10 +58,10 @@ clip = "notclipped" if not clipped else ""
 if IID_pretrained:
     method_ext = ["", "(.*?)results.*.csv"]
 else:
-    method_ext = ["/*/models", "finetuned(.*?)_mono_hk_288/models/"]    
+    method_ext = ["/*/models", "finetuned_mono_hkfull_288(.*?)/models/"]    
 
 direc = f"{dist_pre}disttrain/{dist_pre}dist{scaling}" #"undisttrain/undist" or "disttrain/dist"
-file_paths = sorted(glob.glob(f"/media/rema/outputs/{direc}/{method_strings}{method_ext[0]}/*{clip}*.csv"))
+file_paths = sorted(glob.glob(f"/raid/rema/outputs/{direc}/{method_strings}{method_ext[0]}/*{clip}*.csv"))
 pattern = fr"/outputs/{direc}/(.*?)/{dist}{method_ext[1]}"
         
 dfs_mean_rmse = []
@@ -69,8 +76,8 @@ for file_path in file_paths:
     df_mean_rmse = df[['video', 'mean_rmse']]
     df_mean_rmse_masked = df[['video', 'mean_rmse_masked']]
     # Rename columns
-    df_mean_rmse.columns = ['video', f"{method}_{model}"]
-    df_mean_rmse_masked.columns = ['video', f"{method}_{model}"]
+    df_mean_rmse.columns = ['video', f"{method}{model}"]
+    df_mean_rmse_masked.columns = ['video', f"{method}{model}"]
     dfs_mean_rmse.append(df_mean_rmse)
     dfs_mean_rmse_masked.append(df_mean_rmse_masked)
 
@@ -108,7 +115,7 @@ stats_masked= combine_stats(merged_df_mean_rmse_masked, methods, augmentations).
 
 
 # save to csv
-output = f"/media/rema/outputs/{direc}"
+output = f"/raid/rema/outputs/{direc}"
 merged_df_mean_rmse.to_excel(f'{output}/{clip}results_rmse.xlsx', index=False)
 merged_df_mean_rmse_masked.to_excel(f'{output}/{clip}results_rmse_masked.xlsx', index=False)
 stats.to_excel(f'{output}/{clip}results_rmse_stats.xlsx', index=False)

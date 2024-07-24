@@ -42,7 +42,7 @@ def process_images(image_files, pred_depth_files, gt_depth_files= None):
 
 
 # List of image paths
-IID_pretrained = True
+IID_pretrained = False
 aug_list = ['', '_add', '_rem', '_addrem']
 # seq_list = ['sigmoid_t3_b', 'trans_t2_a', 'trans_t2_b', 'trans_t3_a', 'trans_t4_a', 'trans_t4_b']
 # idx_list = ['0000', '0000', '0007', '0000', '0000', '0000']
@@ -69,9 +69,9 @@ else:
     for model in model_list:
         rows = []
         for seq, idx in zip(seq_list, idx_list):
-            image_files = [f"/media/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_color.png"]
-            gt_depth_files = [f"/media/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_depth.tiff"]
-            pred_depth_files = [f"/media/rema/outputs/undisttrain/undist/{model}/finetuned{aug}_mono_hk_288/models/weights_19/{seq}/{idx}_color_triplet.png" for aug in aug_list]
+            image_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_color.png"]
+            gt_depth_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_depth.tiff"]
+            pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/{model}/finetuned_mono_hkfull_288{aug}/models/weights_19/{seq}/{idx}_color_triplet.png" for aug in aug_list]
             # Process the images for each row
             rows.append(process_images(image_files, pred_depth_files, gt_depth_files))
 
@@ -79,4 +79,4 @@ else:
         result = np.vstack(rows)
 
         # Save the result
-        cv2.imwrite(f'/media/rema/outputs/undisttrain/undist/visualresults{model}.png', result)
+        cv2.imwrite(f'/raid/rema/outputs/undisttrain/undist/visualresults{model}.png', result)
