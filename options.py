@@ -9,214 +9,220 @@ file_dir = os.path.dirname(__file__)  # the directory that options.py resides in
 
 
 class MonodepthOptions:
-    def __init__(self):
-        self.parser = argparse.ArgumentParser(description="IID_SFM options")
+     def __init__(self):
+          self.parser = argparse.ArgumentParser(description="IID_SFM options")
 
-        # PATHS
-        self.parser.add_argument("--data_path",
-                                 type=str,
-                                 help="path to the training data")
-        self.parser.add_argument("--log_dir",
-                                 type=str,
-                                 help="log directory")
+          # PATHS
+          self.parser.add_argument("--data_path",
+                                   type=str,
+                                   help="path to the training data")
+          self.parser.add_argument("--log_dir",
+                                   type=str,
+                                   help="log directory")
 
-        # TRAINING options
-        self.parser.add_argument("--model_name",
-                                 type=str,
-                                 help="the name of the folder to save the model in",
-                                 default=time.strftime('%Y-%m-%d-%H-%M-%S'))
-        self.parser.add_argument("--split",
-                                 type=str,
-                                 help="which training split to use",
-                                 choices=["endovis", "hamlyn", "hk"],
-                                 default="hk")
-        self.parser.add_argument("--num_layers",
-                                 type=int,
-                                 help="number of resnet layers",
-                                 default=18,
-                                 choices=[18, 34, 50, 101, 152])
-        self.parser.add_argument("--dataset",
-                                 type=str,
-                                 help="dataset to train on",
-                                 default="hk",
-                                 choices=["endovis", "hamlyn", "hk"])
-        self.parser.add_argument("--height",
-                                 type=int,
-                                 help="input image height",
-                                 default=256)
-        self.parser.add_argument("--width",
-                                 type=int,
-                                 help="input image width",
-                                 default=320)
-        self.parser.add_argument("--disparity_smoothness", # Les
-                                 type=float,
-                                 help="disparity smoothness weight",
-                                 default=0.01)
-        self.parser.add_argument("--reconstruction_constraint", # Lds
-                                 type=float,
-                                 help="consistency constraint weight",
-                                 default=0.2)
-        self.parser.add_argument("--reflec_constraint", # La
-                                 type=float,
-                                 help="epipolar constraint weight",
-                                 default=0.2)
-        self.parser.add_argument("--reprojection_constraint", #Lms
-                                 type=float,
-                                 help="geometry constraint weight",
-                                 default=1)
-        self.parser.add_argument("--scales",
-                                 nargs="+",
-                                 type=int,
-                                 help="scales used in the loss",
-                                 default=[0, 1, 2, 3])
-        self.parser.add_argument("--min_depth",
-                                 type=float,
-                                 help="minimum depth",
-                                 default=0.1)
-        self.parser.add_argument("--max_depth",
-                                 type=float,
-                                 help="maximum depth",
-                                 default=150.0)
-        self.parser.add_argument("--frame_ids",
-                                 nargs="+",
-                                 type=int,
-                                 help="frames to load",
-                                 default=[0, -1, 1])
-        # added by rema for training
+          # TRAINING options
+          self.parser.add_argument("--model_name",
+                                   type=str,
+                                   help="the name of the folder to save the model in",
+                                   default=time.strftime('%Y-%m-%d-%H-%M-%S'))
+          self.parser.add_argument("--split",
+                                   type=str,
+                                   help="which training split to use",
+                                   choices=["endovis", "hamlyn", "hk"],
+                                   default="hk")
+          self.parser.add_argument("--num_layers",
+                                   type=int,
+                                   help="number of resnet layers",
+                                   default=18,
+                                   choices=[18, 34, 50, 101, 152])
+          self.parser.add_argument("--dataset",
+                                   type=str,
+                                   help="dataset to train on",
+                                   default="hk",
+                                   choices=["endovis", "hamlyn", "hk"])
+          self.parser.add_argument("--height",
+                                   type=int,
+                                   help="input image height",
+                                   default=256)
+          self.parser.add_argument("--width",
+                                   type=int,
+                                   help="input image width",
+                                   default=320)
+          self.parser.add_argument("--disparity_smoothness", # Les
+                                   type=float,
+                                   help="disparity smoothness weight",
+                                   default=0.01)
+          self.parser.add_argument("--reconstruction_constraint", # Lds
+                                   type=float,
+                                   help="consistency constraint weight",
+                                   default=0.2)
+          self.parser.add_argument("--reflec_constraint", # La
+                                   type=float,
+                                   help="epipolar constraint weight",
+                                   default=0.2)
+          self.parser.add_argument("--reprojection_constraint", #Lms
+                                   type=float,
+                                   help="geometry constraint weight",
+                                   default=1)
+          self.parser.add_argument("--scales",
+                                   nargs="+",
+                                   type=int,
+                                   help="scales used in the loss",
+                                   default=[0, 1, 2, 3])
+          self.parser.add_argument("--min_depth",
+                                   type=float,
+                                   help="minimum depth",
+                                   default=0.1)
+          self.parser.add_argument("--max_depth",
+                                   type=float,
+                                   help="maximum depth",
+                                   default=150.0)
+          self.parser.add_argument("--frame_ids",
+                                   nargs="+",
+                                   type=int,
+                                   help="frames to load",
+                                   default=[0, -1, 1])
+          # added by rema for training
 
-        self.parser.add_argument("--inpaint_pseudo_gt_dir", type=str,
-                                 help='path to the pseudo gt directory',
-                                 default=None)
-        self.parser.add_argument("--flipping", help="if set, uses flipping",
-                                 action="store_true")
-        self.parser.add_argument("--rotating", help="if set, uses rotating",
-                                 action="store_true")
-        self.parser.add_argument("--light_in_depth", help="if set, uses light in depth",
-                                 action="store_true")
-        self.parser.add_argument("--input_mask_path", type=str,
-                                 help='path to the input mask',
-                                 default=None)
-        self.parser.add_argument("--distorted", help="if set, uses distorted intrinsics",
-                                 action="store_true")
-        self.parser.add_argument("--config", type=str,
-                                 help='path to the config file',
-                                 default=None)
-        self.parser.add_argument("--aug_type", type=str,
-                                 help='type of data augmentation',
-                                 default='',
-                                 choices=['', 'add', 'rem', 'addrem'])
+          self.parser.add_argument("--inpaint_pseudo_gt_dir", type=str,
+                                   help='path to the pseudo gt directory',
+                                   default=None)
+          self.parser.add_argument("--flipping", help="if set, uses flipping",
+                                   action="store_true")
+          self.parser.add_argument("--rotating", help="if set, uses rotating",
+                                   action="store_true")
+          self.parser.add_argument("--light_in_depth", help="if set, uses light in depth",
+                                   action="store_true")
+          self.parser.add_argument("--input_mask_path", type=str,
+                                   help='path to the input mask',
+                                   default=None)
+          self.parser.add_argument("--distorted", help="if set, uses distorted intrinsics",
+                                   action="store_true")
+          self.parser.add_argument("--config", type=str,
+                                   help='path to the config file',
+                                   default=None)
+          self.parser.add_argument("--aug_type", type=str,
+                                   help='type of data augmentation',
+                                   default='',
+                                   choices=['', 'add', 'rem', 'addrem'])
+          self.parser.add_argument("--automasking",
+                                   help="if set, does auto-masking",
+                                   action="store_true")
+          self.parser.add_argument("--png",
+                                   help="if set, trains from raw KITTI png files (instead of jpgs)",
+                                   action="store_true")
 
-        # OPTIMIZATION options
-        self.parser.add_argument("--batch_size",
-                                 type=int,
-                                 help="batch size",
-                                 default=8)
-        self.parser.add_argument("--learning_rate",
-                                 type=float,
-                                 help="learning rate",
-                                 default=1e-4)
-        self.parser.add_argument("--num_epochs",
-                                 type=int,
-                                 help="number of epochs",
-                                 default=20)
-        self.parser.add_argument("--scheduler_step_size",
-                                 type=int,
-                                 help="step size of the scheduler",
-                                 default=10)
+          # OPTIMIZATION options
+          self.parser.add_argument("--batch_size",
+                                   type=int,
+                                   help="batch size",
+                                   default=8)
+          self.parser.add_argument("--learning_rate",
+                                   type=float,
+                                   help="learning rate",
+                                   default=1e-4)
+          self.parser.add_argument("--num_epochs",
+                                   type=int,
+                                   help="number of epochs",
+                                   default=20)
+          self.parser.add_argument("--scheduler_step_size",
+                                   type=int,
+                                   help="step size of the scheduler",
+                                   default=10)
 
-        # ABLATION options
-        self.parser.add_argument("--weights_init",
-                                 type=str,
-                                 help="pretrained or scratch",
-                                 default="pretrained",
-                                 choices=["pretrained", "scratch"])
-        self.parser.add_argument("--pose_model_input",
-                                 type=str,
-                                 help="how many images the pose network gets",
-                                 default="pairs",
-                                 choices=["pairs", "all"])
+          # ABLATION options
+          self.parser.add_argument("--weights_init",
+                                   type=str,
+                                   help="pretrained or scratch",
+                                   default="pretrained",
+                                   choices=["pretrained", "scratch"])
+          self.parser.add_argument("--pose_model_input",
+                                   type=str,
+                                   help="how many images the pose network gets",
+                                   default="pairs",
+                                   choices=["pairs", "all"])
 
-        # SYSTEM options
-        self.parser.add_argument("--no_cuda",
-                                 help="if set disables CUDA",
-                                 action="store_true")
-        self.parser.add_argument("--num_workers",
-                                 type=int,
-                                 help="number of dataloader workers",
-                                 default=12)
+          # SYSTEM options
+          self.parser.add_argument("--no_cuda",
+                                   help="if set disables CUDA",
+                                   action="store_true")
+          self.parser.add_argument("--num_workers",
+                                   type=int,
+                                   help="number of dataloader workers",
+                                   default=12)
 
-        # LOADING options
-        self.parser.add_argument("--load_weights_folder",
-                                 type=str,
-                                 help="name of model to load"
-                                 )
-        self.parser.add_argument("--models_to_load",
-                                 nargs="+",
-                                 type=str,
-                                 help="models to load")
+          # LOADING options
+          self.parser.add_argument("--load_weights_folder",
+                                   type=str,
+                                   help="name of model to load"
+                                   )
+          self.parser.add_argument("--models_to_load",
+                                   nargs="+",
+                                   type=str,
+                                   help="models to load")
 
-        # LOGGING options
-        self.parser.add_argument("--log_frequency",
-                                 type=int,
-                                 help="number of batches between each tensorboard log",
-                                 default=200)
-        self.parser.add_argument("--save_frequency",
-                                 type=int,
-                                 help="number of epochs between each save",
-                                 default=10)
+          # LOGGING options
+          self.parser.add_argument("--log_frequency",
+                                   type=int,
+                                   help="number of batches between each tensorboard log",
+                                   default=200)
+          self.parser.add_argument("--save_frequency",
+                                   type=int,
+                                   help="number of epochs between each save",
+                                   default=10)
 
-        # EVALUATION options
-        self.parser.add_argument("--eval_stereo",
-                                 help="if set evaluates in stereo mode",
-                                 action="store_true")
-        self.parser.add_argument("--eval_mono",
-                                 help="if set evaluates in mono mode",
-                                 action="store_true",
-                                 default=True)
-        self.parser.add_argument("--disable_median_scaling",
-                                 help="if set disables median scaling in evaluation",
-                                 action="store_true")
-        self.parser.add_argument("--pred_depth_scale_factor",
-                                 help="if set multiplies predictions by this number",
-                                 type=float,
-                                 default=1)
-        self.parser.add_argument("--ext_disp_to_eval",
-                                 type=str,
-                                 help="optional path to a .npy disparities file to evaluate")
-        self.parser.add_argument("--eval_split",
-                                 type=str,
-                                 default="endovis",
-                                 choices=["endovis","hamlyn"],
-                                 help="which split to run eval on")
-        self.parser.add_argument("--save_pred_disps",
-                                 help="if set saves predicted disparities",
-                                 action="store_true")
-        self.parser.add_argument("--no_eval",
-                                 help="if set disables evaluation",
-                                 action="store_true")
-        self.parser.add_argument("--eval_eigen_to_benchmark",
-                                 help="if set assume we are loading eigen results from npy but "
-                                      "we want to evaluate using the new benchmark.",
-                                 action="store_true")
-        self.parser.add_argument("--eval_out_dir",
-                                 help="if set will output the disparities to this folder",
-                                 type=str)
-        self.parser.add_argument("--post_process",
-                                 help="if set will perform the flipping post processing "
-                                      "from the original monodepth paper",
-                                 action="store_true")
+          # EVALUATION options
+          self.parser.add_argument("--eval_stereo",
+                                   help="if set evaluates in stereo mode",
+                                   action="store_true")
+          self.parser.add_argument("--eval_mono",
+                                   help="if set evaluates in mono mode",
+                                   action="store_true",
+                                   default=True)
+          self.parser.add_argument("--disable_median_scaling",
+                                   help="if set disables median scaling in evaluation",
+                                   action="store_true")
+          self.parser.add_argument("--pred_depth_scale_factor",
+                                   help="if set multiplies predictions by this number",
+                                   type=float,
+                                   default=1)
+          self.parser.add_argument("--ext_disp_to_eval",
+                                   type=str,
+                                   help="optional path to a .npy disparities file to evaluate")
+          self.parser.add_argument("--eval_split",
+                                   type=str,
+                                   default="endovis",
+                                   choices=["endovis","hamlyn"],
+                                   help="which split to run eval on")
+          self.parser.add_argument("--save_pred_disps",
+                                   help="if set saves predicted disparities",
+                                   action="store_true")
+          self.parser.add_argument("--no_eval",
+                                   help="if set disables evaluation",
+                                   action="store_true")
+          self.parser.add_argument("--eval_eigen_to_benchmark",
+                                   help="if set assume we are loading eigen results from npy but "
+                                        "we want to evaluate using the new benchmark.",
+                                   action="store_true")
+          self.parser.add_argument("--eval_out_dir",
+                                   help="if set will output the disparities to this folder",
+                                   type=str)
+          self.parser.add_argument("--post_process",
+                                   help="if set will perform the flipping post processing "
+                                        "from the original monodepth paper",
+                                   action="store_true")
 
         
         
-    def parse(self):
-        self.options = self.parser.parse_args()
-        
-        if self.options.config is not None:
-          # Load options from the configuration file
-          with open(self.options.config, 'r') as f:
-               config = json.load(f)
+     def parse(self):
+          self.options = self.parser.parse_args()
           
-          # Update default options with options from the configuration file
-          for key, value in config.items():
-               setattr(self.options, key, value)
-        return self.options
+          if self.options.config is not None:
+               # Load options from the configuration file
+               with open(self.options.config, 'r') as f:
+                    config = json.load(f)
+               
+               # Update default options with options from the configuration file
+               for key, value in config.items():
+                    setattr(self.options, key, value)
+          return self.options

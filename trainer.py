@@ -423,55 +423,32 @@ class Trainer:
         loss_reconstruction = 0
         inpaint = "inpaint_" if self.opt.inpaint_pseudo_gt_dir is not None else ""
         for frame_id in self.opt.frame_ids:
-            # if self.opt.input_mask_path is not None:
-            #     loss_reconstruction += (self.compute_reprojection_loss(inputs[(inpaint+"color_aug", frame_id, 0)], outputs[("reprojection_color", 0, frame_id)])*self.input_mask).sum() / self.input_mask.sum()
-            # else:
+            outputs[("specular_color", frame_id, 0)] = torch.abs(transforms.functional.rgb_to_grayscale(inputs[("color_aug", frame_id, 0)]) - transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)]))
+            outputs[("specular_color_pseudo", frame_id, 0)] = torch.abs(transforms.functional.rgb_to_grayscale(inputs[(inpaint+"color_aug", frame_id, 0)]) - transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)]))
             loss_reconstruction += (self.compute_reprojection_loss(inputs[(inpaint+"color_aug", frame_id, 0)], outputs[("reprojection_color", 0, frame_id)])).mean()
 
         for frame_id in self.opt.frame_ids[1:]: 
-            # mask0 = outputs[("valid_mask", 0, frame_id)]
-            if self.opt.input_mask_path is not None:
-                mask = outputs[("valid_mask", 0, frame_id)].int() & self.input_mask.int()
-            else:
-                mask = outputs[("valid_mask", 0, frame_id)]
-            ## to save masks use this:
-            # def saver(tensor):
-            #     for i in range(tensor.size(0)):
-            #         # Squeeze to remove the channel dimension if it's 1 (for grayscale images)
-            #         img = tensor[i].squeeze().cpu().numpy()
-            #         # Convert to PIL image
-            #         pil_img = Image.fromarray(img.astype('uint8'))
-            #         # Save the image
-            #         pil_img.save(f'image2_{i}.png')
-                
-            loss_reflec += (torch.abs(outputs[("reflectance",0,0)] - outputs[("reflectance_warp", 0, frame_id)]).mean(1, True) * mask).sum() / mask.sum()
-            loss_reprojection += (self.compute_reprojection_loss(inputs[(inpaint+"color_aug", 0, 0)], outputs[("reprojection_color_warp", 0, frame_id)]) * mask).sum() / mask.sum()
-            
+            mask = outputs[("valid_mask", 0, frame_id)]
+            mask_comb = mask.clone()
+            reflec_loss_item = torch.abs(outputs[("reflectance",0,0)] - outputs[("reflectance_warp", 0, frame_id)]).mean(1, True)
+            reprojection_loss_item = self.compute_reprojection_loss(inputs[(inpaint+"color_aug", 0, 0)], outputs[("reprojection_color_warp", 0, frame_id)])
+            if self.opt.automasking:
+                identity_reprojection_loss_item = self.compute_reprojection_loss(inputs[("color", frame_id, 0)], inputs[("color", 0, 0)])
+                # add random numbers to break ties
+                identity_reprojection_loss_item += torch.randn(identity_reprojection_loss_item.shape, device=self.device) * 0.00001
+                mask_idt = (reprojection_loss_item < identity_reprojection_loss_item).float()
+                mask_comb = mask * mask_idt
+                outputs["identity_selection"] = mask_comb.clone()
+
+            loss_reflec += (reflec_loss_item * mask_comb).sum() / mask_comb.sum()
+            loss_reprojection += (reprojection_loss_item * mask_comb).sum() / mask_comb.sum()
+
+
         disp = outputs[("disp", 0)]
-        if self.opt.input_mask_path is not None:
-            outputs[("disp_masked", 0)] = disp * self.input_mask
-            
-        ### more options for masking with smoothness loss
-        # # Step 1: Apply mask to zero out non-masked regions
-        # masked_values = disp * mask
-        # # Step 2: Sum the masked values along the desired dimensions
-        # sum_masked = masked_values.sum(dim=(2, 3), keepdim=True)
-        # # Step 3: Count the number of masked elements (where mask == 1)
-        # mask_count = mask.sum(dim=(2, 3), keepdim=True)
-        # # Avoid division by zero by setting any zero counts to 1 (or any non-zero value)
-        # mask_count = mask_count.clamp(min=1)
-        # # Step 4: Calculate the mean over the masked regions
-        # mean_disp = sum_masked / mask_count
-        # color = inputs[("color_aug", 0, 0)]
-        # norm_disp = masked_values / (mean_disp + 1e-7)
-        ###
-        
-        ###
         color = inputs[("color_aug", 0, 0)]
         mean_disp = disp.mean(2, True).mean(3, True)
         norm_disp = disp / (mean_disp + 1e-7)
-        ###
-        loss_disp_smooth = get_smooth_loss(norm_disp, color)#, self.input_mask)
+        loss_disp_smooth = get_smooth_loss(norm_disp, color)
      
         total_loss = self.opt.reprojection_constraint*loss_reprojection / 2.0 + self.opt.reflec_constraint*(loss_reflec / 2.0) + \
                         self.opt.disparity_smoothness*loss_disp_smooth + self.opt.reconstruction_constraint*(loss_reconstruction/3.0)
@@ -512,27 +489,52 @@ class Trainer:
     def log(self, mode, inputs, outputs, losses):
         """Write an event to the tensorboard events file
         """
+        inpaint = "inpaint_" if self.opt.inpaint_pseudo_gt_dir is not None else ""
         writer = self.writers[mode]
         for l, v in losses.items():
             writer.add_scalar("{}".format(l), v, self.step)
 
         for j in range(min(4, self.opt.batch_size)):  # write a maxmimum of four images
                 writer.add_image(
-                    "disp/{}".format(j),
-                   visualize_depth(outputs[("disp", 0)][j]), self.step)
-                if self.opt.input_mask_path is not None:
-                    writer.add_image(
-                        "disp_masked/{}".format(j),
-                    visualize_depth(outputs[("disp_masked", 0)][j]), self.step)
+                        "disp/{}".format(j),
+                        visualize_depth(outputs[("disp", 0)][j]), self.step)
                 writer.add_image(
                         "input/{}".format(j),
                         inputs[("color", 0, 0)][j].data, self.step)
+                writer.add_image(
+                        "input_processed/{}".format(j),
+                        inputs[(inpaint+"color_aug", 0, 0)][j].data, self.step)
                 writer.add_image(
                         "reflectance/{}".format(j),
                         outputs[("reflectance", 0, 0)][j].data, self.step)
                 writer.add_image(
                         "light/{}".format(j),
                         outputs[("light", 0, 0)][j].data, self.step)
+                writer.add_image(
+                        "AS_reprojection/{}".format(j),
+                        outputs[("reprojection_color", 0, 0)][j].data, self.step)
+                writer.add_image(
+                        "Specular_I-AS/{}".format(j),
+                        outputs[("specular_color", 0, 0)][j].data, self.step)
+                writer.add_image(
+                        "Specular_Iinp-AS/{}".format(j),
+                        outputs[("specular_color_pseudo", 0, 0)][j].data, self.step)
+                writer.add_image(
+                        "input_1/{}".format(j),
+                        inputs[("color", 1, 0)][j].data, self.step)
+                writer.add_image(
+                        "transform/{}".format(j),
+                        outputs[("transform", 0, 1)][j].data, self.step)
+                writer.add_image(
+                        "light_warped/{}".format(j),
+                        outputs[("light_warp", 0, 1)][j].data, self.step)
+                writer.add_image(
+                        "light_adjust_warped/{}".format(j),
+                        outputs[("light_adjust_warp", 0, 1)][j].data, self.step)
+                if self.opt.automasking:
+                    writer.add_image(
+                            "automask/{}".format(j),
+                            outputs["identity_selection"][j].data, self.step)
                     
 
     def save_opts(self):
