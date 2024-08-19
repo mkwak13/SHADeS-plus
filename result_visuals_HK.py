@@ -41,17 +41,19 @@ def process_images(image_files, pred_depth_files, gt_depth_files=None, colormap 
 
 # List of image paths
 IID_pretrained = False
-decompose = True
-colormap = False
+decompose = False
+colormap = True
 color = "" if colormap else "raw"
-prefix = ["/decomposed","reflect"] if decompose else ["",""] # reflect or light
-aug_list = ['','_pseudo_dsms'] #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem'] 
+prefix = ["/decomposed","light"] if decompose else ["",""] # reflect or light
+aug_list = ['','_pseudo_dsms','_pseudo_dsms_automasking'] #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem'] 
 #['', '_inp_pseudo', '_flip', '_rot']#'_ds3', '_alb05', '_rep5', '_rec05','_lr5']#, '_add', '_rem', '_addrem']
 seq_list = ["baa6b87a-ff86-4306-9be2-c518956ae4ee", 
             "da5d2629-3a74-4ec0-9ace-57dbc6ebddad", 
             "baa6b87a-ff86-4306-9be2-c518956ae4ee", 
+            "da5d2629-3a74-4ec0-9ace-57dbc6ebddad", 
+            "baa6b87a-ff86-4306-9be2-c518956ae4ee", 
             "da5d2629-3a74-4ec0-9ace-57dbc6ebddad"]
-idx_list = ["00007", "00390", "00143", "00266"]
+idx_list = ["00007", "00390", "00143", "00107", "00019", "00266"]
 
 model_list =  ['IID'] #['monodepth2', 'monovit', 'IID'] #
 

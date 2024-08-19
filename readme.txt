@@ -151,3 +151,5 @@ CUDA_VISIBLE_DEVICES=1 nohup python test_simple.py --image_path /raid/rema/data/
 
 # automasking with pseudo_dsms
 CUDA_VISIBLE_DEVICES=1 nohup python train.py --config  /raid/rema/configs/IID/finetuned_mono_hkfull_288_pseudo_dsms_automasking.json > IID_fullhk_288_pseudo_dsms_automasking.log 2>&1 &
+python test_simple.py --image_path /home/rema/workspace/IID-SfmLearner/splits/hk/test_files.txt --model_name finetuned_mono_hkfull_288_pseudo_dsms_automasking/models/weights_19 --method IID --model_basepath /raid/rema/trained_models --output_path /raid/rema/outputs/undisttrain/undist --save_depth --decompose
+CUDA_VISIBLE_DEVICES=1 nohup python test_simple.py --image_path /raid/rema/data/C3VD/Undistorted/Dataset --model_name finetuned_mono_hkfull_288_pseudo_dsms_automasking/models/weights_19 --method IID --model_basepath /raid/rema/trained_models --output_path /raid/rema/outputs/undisttrain/undist --eval --seq all --save_triplet > IID_testfullhk_288_pseudo_dsms_automasking.log 2>&1 &
