@@ -281,10 +281,10 @@ def test_simple(args, seq):
             pred_depth = (1/disp_resized).squeeze().cpu().numpy()
 
             if args.save_depth:
-                # if args.input_mask is not None:
-                    # input_mask_np = input_mask[0, 0, :, :].numpy()
-                    # pred_depth[input_mask_np == 0] = 0
-                pred_depth[pred_depth > 0.8] = 0 #IMPORTANT:remove in some cases!
+                if args.input_mask is not None:
+                    input_mask_np = input_mask[0, 0, :, :].numpy()
+                    pred_depth[input_mask_np == 0] = 0
+                # pred_depth[pred_depth > 0.8] = 0 #IMPORTANT:remove in some cases!
                 max_value = np.max(pred_depth)
                 trip_im = pil.fromarray(np.stack((pred_depth*255/max_value,)*3, axis=-1).astype(np.uint8))
                 # trip_im.save("outputimage.png")

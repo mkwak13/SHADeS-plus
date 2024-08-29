@@ -113,6 +113,10 @@ class MonodepthOptions:
                                    action="store_true")
           self.parser.add_argument("--noadjust", help="if set, does not adjust the shading",
                                    action="store_true")
+          self.parser.add_argument("--disparity_spatial_constraint", 
+                                   help="disparity spatial constraint weight",
+                                   type=float,
+                                   default=0.0)
 
           # OPTIMIZATION options
           self.parser.add_argument("--batch_size",

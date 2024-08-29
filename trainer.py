@@ -410,6 +410,49 @@ class Trainer:
             
 
 
+
+    def proportional_loss_with_threshold(self, disp_map, threshold):
+        """
+        Computes the loss that enforces proportionality between depth differences and spatial differences
+        only when depth differences are large.
+
+        Args:
+        - disp_map (torch.Tensor): Tensor containing disp values of shape (B, 1, H, W).
+        - threshold (float): The depth difference threshold for enforcing proportionality.
+
+        Returns:
+        - loss (torch.Tensor): The computed loss value.
+        """
+
+
+        batch_size, _, rows, cols = disp_map.shape
+        
+        # Normalize spatial distances by the maximum possible distance
+        max_dist = torch.sqrt(torch.tensor(rows**2 + cols**2, dtype=torch.float32))
+        
+
+        # Initialize DD_map and SD_map on the same device as disp_map
+        DD_map = torch.zeros((batch_size, rows, cols), dtype=disp_map.dtype, device=disp_map.device)
+        SD_map = torch.zeros((batch_size, rows, cols), dtype=disp_map.dtype, device=disp_map.device)
+
+        # Generate random indices for the entire map using PyTorch
+        rand_x = torch.randint(0, rows, (batch_size, rows, cols), device=disp_map.device)
+        rand_y = torch.randint(0, cols, (batch_size, rows, cols), device=disp_map.device)
+
+        # Compute DD_map and SD_map using vectorized operations
+        i_indices = torch.arange(rows, device=disp_map.device).view(1, -1, 1).expand(batch_size, rows, cols)
+        j_indices = torch.arange(cols, device=disp_map.device).view(1, 1, -1).expand(batch_size, rows, cols)
+
+        DD_map = disp_map.squeeze(1) - disp_map.squeeze(1)[np.arange(batch_size)[:, None, None], rand_x, rand_y]
+        SD_map = torch.sqrt((i_indices - rand_x).float() ** 2 + (j_indices - rand_y).float() ** 2)/max_dist
+
+        # Compute the loss
+        mask = DD_map < threshold
+        loss = torch.mean(mask.float() * (SD_map - DD_map) ** 2)
+        
+        
+        return loss
+        
     def compute_reprojection_loss(self, pred, target):
 
         abs_diff = torch.abs(target - pred)
@@ -418,7 +461,7 @@ class Trainer:
         reprojection_loss = 0.85 * ssim_loss + 0.15 * l1_loss
 
         return reprojection_loss
-
+    
     def compute_losses(self, inputs, outputs):
 
         losses = {}
@@ -455,9 +498,16 @@ class Trainer:
         mean_disp = disp.mean(2, True).mean(3, True)
         norm_disp = disp / (mean_disp + 1e-7)
         loss_disp_smooth = get_smooth_loss(norm_disp, color)
-     
-        total_loss = self.opt.reprojection_constraint*loss_reprojection / 2.0 + self.opt.reflec_constraint*(loss_reflec / 2.0) + \
-                        self.opt.disparity_smoothness*loss_disp_smooth + self.opt.reconstruction_constraint*(loss_reconstruction/3.0)
+        if self.opt.disparity_spatial_constraint > 0:
+            loss_disp_spatial = self.proportional_loss_with_threshold(disp, 0.5)
+        else:
+            loss_disp_spatial = 0
+            
+        total_loss = (self.opt.reprojection_constraint*loss_reprojection / 2.0 + 
+                      self.opt.reflec_constraint*(loss_reflec / 2.0) + 
+                      self.opt.disparity_smoothness*loss_disp_smooth + 
+                      self.opt.reconstruction_constraint*(loss_reconstruction/3.0) + 
+                      self.opt.disparity_spatial_constraint*loss_disp_spatial)
 
         losses["loss"] = total_loss
         return losses
