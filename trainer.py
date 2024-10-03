@@ -18,7 +18,8 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 import torch.nn.functional as F
 from torchvision import transforms
-
+import random
+random.seed(42)
 
 class Trainer:
     def __init__(self, options):
@@ -94,32 +95,21 @@ class Trainer:
 
         # data
         datasets_dict = {"endovis": datasets.SCAREDRAWDataset,
-                         "hk": datasets.HKDataset}
+                         "hk": datasets.HKDataset,
+                         "c3vd": datasets.C3VDDataset}
         self.dataset = datasets_dict[self.opt.dataset]
 
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
         img_ext = '.png' if self.opt.png else '.jpg'
         
-        if self.opt.split == "hk":
+        if self.opt.split == "hk" or self.opt.split == "c3vd":
             aug = self.opt.aug_type
             if not os.path.exists(fpath.format(f"train{aug}")):
-                sub_files =[]
+                
                 if not isinstance(self.opt.data_path, list):
                     self.opt.data_path = [self.opt.data_path]
                 
-                traintestval = []
-                for data_path in self.opt.data_path:
-                    contents_lists = glob.glob(os.path.join(data_path, "*"))
-                    sub_files =[]
-                    for subdir in contents_lists:
-                        sub_files.append(sorted(glob.glob(os.path.join(subdir,f"*{img_ext}")))[1:-1])
-                    all_files = list(chain.from_iterable(sub_files))
-                    train_temp_f, test_f = train_test_split(all_files, test_size=0.04, shuffle=False)
-                    train_f, val_f = train_test_split(train_temp_f, test_size=0.1, shuffle=False)
-                    traintestval.append([train_f, test_f, val_f])
-                train_filenames = list(chain.from_iterable([traintestval[i][0] for i in range(len(traintestval))]))
-                test_filenames = list(chain.from_iterable([traintestval[i][1] for i in range(len(traintestval))]))
-                val_filenames = list(chain.from_iterable([traintestval[i][2] for i in range(len(traintestval))]))
+                train_filenames, test_filenames, val_filenames = self.generate_train_test_val(self.opt.data_path, img_ext)
                 
                 # Extract the directory from the file path pattern
                 directory = os.path.dirname(fpath)
@@ -158,7 +148,7 @@ class Trainer:
         num_train_samples = len(train_filenames)
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
-        if self.opt.dataset == "hk":
+        if self.opt.dataset == "hk" or self.opt.dataset == "c3vd":
             train_dataset = self.dataset(
                 self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
                 self.opt.frame_ids, 4, is_train=True, img_ext=img_ext, 
@@ -173,7 +163,7 @@ class Trainer:
             train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         
-        if self.opt.dataset == "hk":
+        if self.opt.dataset == "hk" or self.opt.dataset == "c3vd":
             val_dataset = self.dataset(
             self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=False, img_ext=img_ext,
@@ -217,6 +207,45 @@ class Trainer:
         self.save_opts()
 
 
+    def generate_train_test_val(self, data_path, img_ext):
+        if self.opt.split == "hk":
+            traintestval = []
+            for data_path in self.opt.data_path:
+                contents_lists = glob.glob(os.path.join(data_path, "*"))
+                sub_files =[]
+                for subdir in contents_lists:
+                    sub_files.append(sorted(glob.glob(os.path.join(subdir,f"*{img_ext}")))[1:-1])
+                all_files = list(chain.from_iterable(sub_files))
+                train_temp_f, test_f = train_test_split(all_files, test_size=0.04, shuffle=False)
+                train_f, val_f = train_test_split(train_temp_f, test_size=0.1, shuffle=False)
+                traintestval.append([train_f, test_f, val_f])
+            train_filenames = list(chain.from_iterable([traintestval[i][0] for i in range(len(traintestval))]))
+            test_filenames = list(chain.from_iterable([traintestval[i][1] for i in range(len(traintestval))]))
+            val_filenames = list(chain.from_iterable([traintestval[i][2] for i in range(len(traintestval))]))
+            return train_filenames, test_filenames, val_filenames
+        if self.opt.split == "c3vd":
+            # Initialize empty lists to accumulate filenames
+            train_filenames = []
+            test_filenames = []
+            val_filenames = []
+            
+            for data_path in self.opt.data_path:
+                test_seq = ["cecum_t2_b", "trans_t4_a", "sigmoid_t3_a"]
+                train_seq = ["cecum_t1_a", "cecum_t1_b", "cecum_t2_a", "cecum_t2_c",
+                            "cecum_t3_a", "cecum_t4_a", "cecum_t4_b", "desc_t4_a",
+                            "sigmoid_t1_a", "sigmoid_t2_a", "sigmoid_t3_b", "trans_t1_a",
+                            "trans_t1_b", "trans_t2_a", "trans_t2_b", "trans_t2_c",
+                            "trans_t3_a", "trans_t3_b", "trans_t4_b"]
+                val_seq = []
+                
+                # Extend the lists with filenames from the current data_path
+                train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in train_seq])))
+                test_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in test_seq])))
+                val_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in val_seq])))
+            
+            return train_filenames, test_filenames, val_filenames
+            
+    
     def set_train(self):
         """Convert all models to training mode
         """
@@ -515,19 +544,20 @@ class Trainer:
     def val(self):
         """Validate the model on a single minibatch
         """
-        self.set_eval()
-        try:
-            inputs = self.val_iter.next()
-        except StopIteration:
-            self.val_iter = iter(self.val_loader)
-            inputs = self.val_iter.next()
+        if len(self.val_loader) != 0:
+            self.set_eval()
+            try:
+                inputs = self.val_iter.next()
+            except StopIteration:
+                self.val_iter = iter(self.val_loader)
+                inputs = self.val_iter.next()
 
-        with torch.no_grad():
-            outputs, losses = self.process_batch(inputs)
-            self.log("val", inputs, outputs, losses)
-            del inputs, outputs, losses
+            with torch.no_grad():
+                outputs, losses = self.process_batch(inputs)
+                self.log("val", inputs, outputs, losses)
+                del inputs, outputs, losses
 
-        self.set_train()
+            self.set_train()
 
 
     def log_time(self, batch_idx, duration, loss):

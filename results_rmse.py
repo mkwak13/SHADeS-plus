@@ -45,12 +45,14 @@ clipped = True
 distorted = False
 singlescale = True
 specscale = False
-addedspec = True
+addedspec = False
+data = "c3vd" #"hkfull"
 
 if singlescale: scaling = "/singlescale" 
 elif specscale: scaling = "/specular_scaling"
 else:           scaling = ""
 
+addsptxt = ""
 if addedspec:   addsptxt = "/addedspec"
 
 dist = "dist_" if distorted else ""
@@ -61,7 +63,7 @@ clip = "notclipped" if not clipped else ""
 if IID_pretrained:
     method_ext = ["", "(.*?)results.*.csv"]
 else:
-    method_ext = ["/*/models", "finetuned_mono_hkfull_288(.*?)/models/"]    
+    method_ext = [f"/*{data}*/models", f"finetuned_mono_{data}_288(.*?)/models/"]    
 
 direc = f"{dist_pre}disttrain/{dist_pre}dist{addsptxt}{scaling}" #"undisttrain/undist" or "disttrain/dist"
 file_paths = sorted(glob.glob(f"/raid/rema/outputs/{direc}/{method_strings}{method_ext[0]}/*{clip}*.csv"))
@@ -119,7 +121,7 @@ stats_masked= combine_stats(merged_df_mean_rmse_masked, methods, augmentations).
 
 # save to csv
 output = f"/raid/rema/outputs/{direc}"
-merged_df_mean_rmse.to_excel(f'{output}/{clip}{augmentations}results_rmse.xlsx', index=False)
-merged_df_mean_rmse_masked.to_excel(f'{output}/{clip}{augmentations}results_rmse_masked.xlsx', index=False)
-stats.to_excel(f'{output}/{clip}{augmentations}results_rmse_stats.xlsx', index=False)
-stats_masked.to_excel(f'{output}/{clip}{augmentations}results_rmse_stats_masked.xlsx', index=False)
+merged_df_mean_rmse.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse.xlsx', index=False)
+merged_df_mean_rmse_masked.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_masked.xlsx', index=False)
+stats.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_stats.xlsx', index=False)
+stats_masked.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_stats_masked.xlsx', index=False)

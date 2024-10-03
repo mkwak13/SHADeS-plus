@@ -15,16 +15,15 @@ def process_images(image_files, pred_depth_files, gt_depth_files=None, colormap 
         # Add the image to the list
         cropped_images.append(img)
 
-    for pred_depth_file in pred_depth_files:
-        # Read the image
-        img = cv2.imread(pred_depth_file, gray)
-        # Apply the colormap
-        if colormap:
-            img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
+    # Read the image
+    img = cv2.imread(pred_depth_files[0], gray)
+    # Apply the colormap
+    if colormap:
+        img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
 
-        # Add the cropped image to the list
-        cropped_images.append(img)
-
+    # Add the cropped image to the list
+    cropped_images.append(img)
+        
     if gt_depth_files is not None:
         for gt_depth_file in gt_depth_files:
             # Read the image
@@ -35,6 +34,18 @@ def process_images(image_files, pred_depth_files, gt_depth_files=None, colormap 
             # Add the image to the list
             cropped_images.append(img)
 
+    for pred_depth_file in pred_depth_files[1:]:
+        # Read the image
+        img = cv2.imread(pred_depth_file, gray)
+        # Apply the colormap
+        if colormap:
+            img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
+
+        # Add the cropped image to the list
+        cropped_images.append(img)
+
+
+
     # Stack the images horizontally
     return np.hstack(cropped_images)
 
@@ -44,8 +55,8 @@ IID_pretrained = False
 decompose = False
 colormap = True
 color = "" if colormap else "raw"
-prefix = ["/decomposed","light"] if decompose else ["",""] # reflect or light
-aug_list = ['','_pseudo_dsms','_pseudo_dsms_automasking','_pseudo_dsms_automasking_noadjust', '_pseudo_dsms_automasking_sploss'] #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem'] 
+prefix = ["/decomposed","reflect"] if decompose else ["",""] # reflect or light
+aug_list = ['', '_automasking', '_pseudo_dsms','_pseudo_dsms_automasking','_pseudo_dsms_automasking_noadjust', '_pseudo_dsms_automasking_sploss'] #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem'] 
 #['', '_inp_pseudo', '_flip', '_rot']#'_ds3', '_alb05', '_rep5', '_rec05','_lr5']#, '_add', '_rem', '_addrem']
 seq_list = ["baa6b87a-ff86-4306-9be2-c518956ae4ee", 
             "da5d2629-3a74-4ec0-9ace-57dbc6ebddad", 

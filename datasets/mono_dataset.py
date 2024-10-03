@@ -13,6 +13,8 @@ from torchvision import transforms
 import torchvision
 from torchvision.transforms import functional as F
 from typing import List, Optional, Tuple
+import re
+
 
 
 ImageFile.LOAD_TRUNCATED_IMAGES=True
@@ -192,7 +194,19 @@ class MonoDataset(data.Dataset):
         line = self.filenames[index].split()
         if len(line) == 1:
             folder = os.path.dirname(line[0])
-            frame_index = int(os.path.basename(line[0]).split(".")[0])
+            
+            # Extract the filename from the path
+            filename = os.path.basename(line[0]).split(".")[0]
+
+            # Use regular expression to find the first sequence of digits
+            match = re.search(r'\d+', filename)
+
+            # Convert the found sequence to an integer
+            if match:
+                frame_index = int(match.group())
+            else:
+                raise ValueError(f"No digits found in filename: {filename}")
+
             side = None
         else:
             folder = line[0]

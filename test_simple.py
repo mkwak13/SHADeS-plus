@@ -286,7 +286,8 @@ def test_simple(args, seq):
                 if args.input_mask is not None:
                     input_mask_np = input_mask[0, 0, :, :].numpy()
                     pred_depth[input_mask_np == 0] = 0
-                # pred_depth[pred_depth > 0.8] = 0 #IMPORTANT:remove in some cases!
+                if pred_depth[pred_depth <= 0.8].size > 0: # threshold 3 for sploss model
+                    pred_depth[pred_depth > 0.8] = np.max(pred_depth[pred_depth <= 0.8]) #IMPORTANT:remove in some cases!
                 max_value = np.max(pred_depth)
                 trip_im = pil.fromarray(np.stack((pred_depth*255/max_value,)*3, axis=-1).astype(np.uint8))
                 # trip_im.save("outputimage.png")
