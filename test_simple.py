@@ -282,6 +282,10 @@ def test_simple(args, seq):
 
             pred_depth = (1/disp_resized).squeeze().cpu().numpy()
 
+            output_name_trip = os.path.splitext(os.path.basename(image_path))[0]
+            name_dest_im_trip = os.path.join(output_directory, "{}.{}".format(output_name_trip, args.ext))
+            print(name_dest_im_trip)      
+                
             if args.save_depth:
                 if args.input_mask is not None:
                     input_mask_np = input_mask[0, 0, :, :].numpy()
@@ -290,31 +294,19 @@ def test_simple(args, seq):
                     pred_depth[pred_depth > 0.8] = np.max(pred_depth[pred_depth <= 0.8]) #IMPORTANT:remove in some cases!
                 max_value = np.max(pred_depth)
                 trip_im = pil.fromarray(np.stack((pred_depth*255/max_value,)*3, axis=-1).astype(np.uint8))
-                # trip_im.save("outputimage.png")
-                # if args.input_mask is not None:
-                #     print("input_mask", type(trip_im), type(input_mask_pil))
-                #     print("input_mask", np.array(trip_im).shape, np.array(input_mask_pil).shape, (np.array(input_mask_pil)/255).shape, np.array(input_mask_pil).max())
-                #     mask_1 = (np.array(input_mask_pil)/255).astype(np.uint8)
-                #     pil.fromarray((np.array(trip_im)*mask_1)).save("outputimage_masked.png")
-                #     trip_im.save("outputimage_from_masked.png")
-                # exit(0)
-            
-                output_name_trip = os.path.splitext(os.path.basename(image_path))[0]
-                name_dest_im_trip = os.path.join(output_directory, "{}.{}".format(output_name_trip, args.ext))
-                
                 trip_im.save(name_dest_im_trip)
-                if args.method == "IID" and args.decompose:
-                    name_dest_im_reflec = os.path.join(output_directory, "decomposed", "{}{}.{}".format("reflect",output_name_trip, args.ext))
-                    reflec = outputs[("reflectance",0)].squeeze().cpu().numpy().transpose(1,2,0)
-                    reflec_pil = pil.fromarray((reflec*255).astype(np.uint8))
-                    reflec_pil.save(name_dest_im_reflec)
+                
+            if args.method == "IID" and args.decompose:
+                name_dest_im_reflec = os.path.join(output_directory, "decomposed", "{}{}.{}".format("reflect",output_name_trip, args.ext))
+                reflec = outputs[("reflectance",0)].squeeze().cpu().numpy().transpose(1,2,0)
+                reflec_pil = pil.fromarray((reflec*255).astype(np.uint8))
+                reflec_pil.save(name_dest_im_reflec)
+                
+                name_dest_im_light = os.path.join(output_directory, "decomposed", "{}{}.{}".format("light",output_name_trip, args.ext))
+                light = outputs[("light",0)].squeeze().cpu().numpy()
+                light_pil = pil.fromarray((light*255).astype(np.uint8))
+                light_pil.save(name_dest_im_light)
                     
-                    name_dest_im_light = os.path.join(output_directory, "decomposed", "{}{}.{}".format("light",output_name_trip, args.ext))
-                    light = outputs[("light",0)].squeeze().cpu().numpy()
-                    light_pil = pil.fromarray((light*255).astype(np.uint8))
-                    light_pil.save(name_dest_im_light)
-                    
-                print(name_dest_im_trip)            
             
                         
             if args.eval:

@@ -1,10 +1,14 @@
 import numpy as np
 import cv2
 
-def process_images(image_files, pred_depth_files, gt_depth_files= None):
+def process_images(decompose, image_files, pred_depth_files, gt_depth_files= None, colormap = True):
     # List to store the cropped images
     cropped_images = []
-
+    if colormap: 
+        gray = cv2.IMREAD_GRAYSCALE
+    else:
+        gray = cv2.IMREAD_COLOR
+        
     for image_file in image_files:
         # Read the image
         img = cv2.imread(image_file)
@@ -13,27 +17,30 @@ def process_images(image_files, pred_depth_files, gt_depth_files= None):
 
     for pred_depth_file in pred_depth_files:
         # Read the image
-        img = cv2.imread(pred_depth_file, cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(pred_depth_file, gray)
         # Apply the colormap
-        img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
+        if colormap:
+            img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
 
-        # Calculate the coordinates of the middle third
-        height, width = img.shape[:2]
-        start_width = width // 3
-        end_width = start_width * 2
+        if not decompose:
+            # Calculate the coordinates of the middle third
+            height, width = img.shape[:2]
+            start_width = width // 3
+            end_width = start_width * 2
 
-        # Crop the image
-        cropped_img = img[:, start_width:end_width]
+            # Crop the image
+            img = img[:, start_width:end_width]
 
         # Add the cropped image to the list
-        cropped_images.append(cropped_img)
+        cropped_images.append(img)
 
     if gt_depth_files is not None:
         for gt_depth_file in gt_depth_files:
             # Read the image
-            img = cv2.imread(gt_depth_file, cv2.IMREAD_GRAYSCALE)
+            img = cv2.imread(gt_depth_file, gray)
             # Apply the colormap
-            img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
+            if colormap:
+                img = cv2.applyColorMap(img, cv2.COLORMAP_TURBO)
             # Add the image to the list
             cropped_images.append(img)
 
@@ -43,13 +50,17 @@ def process_images(image_files, pred_depth_files, gt_depth_files= None):
 
 # List of image paths
 IID_pretrained = False
-aug_list = ['', '_pseudo_dsms','_pseudo_dsms_automasking','_pseudo_dsms_automasking_noadjust', '_pseudo_dsms_automasking_sploss']  #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem']
-seq_list = ['sigmoid_t3_b', 'trans_t2_a', 'trans_t2_b', 'trans_t3_a', 'trans_t4_a', 'trans_t4_b']
-idx_list = ['0000', '0000', '0007', '0000', '0000', '0000']
+decompose = True
+colormap = False
+color = "" if colormap else "raw"
+prefix = ["/decomposed","light","_color"] if decompose else ["","","_color_triplet"] # reflect or light
+aug_list = ['', '_automasking', '_pseudo_dsms','_pseudo_dsms_automasking','_pseudo_dsms_automasking_noadjust']#, '_pseudo_dsms_automasking_sploss']  #['', '_pseudo', '_lightinput', '_pseudo_lightinput']#['', '_add', '_rem', '_addrem']
+seq_list = ['sigmoid_t3_b', 'trans_t4_a', 'trans_t2_b', 'trans_t3_a', 'trans_t4_a', 'trans_t4_b']
+idx_list = ['0000', '0160', '0007', '0000', '0000', '0000']
 # seq_list = ["trans_t4_a", "trans_t4_a", "trans_t4_a", "trans_t4_a"]
 # idx_list = ["0130", "0150", "0180", "0200"]
 model_list = ['IID']#['monodepth2', 'monovit', 'IID']
-data = "c3vd" #"hkfull"
+data = "hkfull" #"c3vd" #"hkfull"
 addsp = False
 addsptxt =  "AddedSpec" if addsp else "Dataset"
 addsptxt2 = "addedspec" if addsp else ""
@@ -58,11 +69,11 @@ if IID_pretrained:
     for model in model_list:
         rows = []
         for seq, idx in zip(seq_list, idx_list):
-            image_files = [f"/media/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_color.png"]
+            image_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_color.png"]
             gt_depth_files = None
-            pred_depth_files = [f"/media/rema/outputs/undisttrain/undist/IID/IID_depth_model/{seq}/{idx}_color_triplet.png"]
+            pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/IID/IID_depth_model/{seq}/{idx}{prefix[2]}.png"]
             # Process the images for each row
-            rows.append(process_images(image_files, pred_depth_files, gt_depth_files))
+            rows.append(process_images(decompose, image_files, pred_depth_files, gt_depth_files, colormap))
 
         # Stack the rows vertically
         result = np.vstack(rows)
@@ -74,13 +85,14 @@ else:
         rows = []
         for seq, idx in zip(seq_list, idx_list):
             image_files = [f"/raid/rema/data/C3VD/Undistorted/{addsptxt}/{seq}/{idx}_color.png"]
-            gt_depth_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_depth.tiff"]
-            pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/{addsptxt2}/{model}/finetuned_mono_{data}_288{aug}/models/weights_19/{seq}/{idx}_color_triplet.png" for aug in aug_list]
+            if decompose: gt_depth_files = None 
+            else: gt_depth_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_depth.tiff"]
+            pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/{addsptxt2}/{model}/finetuned_mono_{data}_288{aug}/models/weights_19/{seq}{prefix[0]}/{prefix[1]}{idx}{prefix[2]}.png" for aug in aug_list]
             # Process the images for each row
-            rows.append(process_images(image_files, pred_depth_files, gt_depth_files))
+            rows.append(process_images(decompose, image_files, pred_depth_files, gt_depth_files, colormap))
 
         # Stack the rows vertically
         result = np.vstack(rows)
 
         # Save the result
-        cv2.imwrite(f'/raid/rema/outputs/undisttrain/undist/visualresults{addsptxt}{model}{data}{str(aug_list)}.png', result)
+        cv2.imwrite(f'/raid/rema/outputs/undisttrain/undist/visualresults{addsptxt}{prefix[1]}{model}{data}{str(aug_list)}.png', result)
