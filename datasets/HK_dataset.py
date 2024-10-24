@@ -42,7 +42,6 @@ class HKInitDataset(MonoDataset):
     
     def get_color(self, folder, frame_index, side, do_flip, do_rot):
         color = self.loader(self.get_image_path(folder, frame_index, side)) #pil image
-
         if do_flip and self.flipping:
             color = color.transpose(pil.FLIP_LEFT_RIGHT)
         if do_rot and self.rotating:
@@ -58,6 +57,9 @@ class HKDataset(HKInitDataset):
         super(HKDataset, self).__init__(*args, **kwargs)
 
     def get_image_path(self, folder, frame_index, side):
-        f_str = "{:05d}{}".format(frame_index, self.img_ext)
+        if "C3VD" in folder:
+            f_str = "{:04d}_color{}".format(frame_index, self.img_ext)
+        elif "BBPS-2-3Frames" in folder:
+            f_str = "{:05d}{}".format(frame_index, self.img_ext)
         image_path = os.path.join(folder, f_str)
         return image_path

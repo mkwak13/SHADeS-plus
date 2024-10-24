@@ -19,7 +19,7 @@ from layers import disp_to_depth
 from utils import download_model_if_doesnt_exist
 import datetime
 import csv
-
+import cv2
 
 def compute_errors(gt, pred):
     """Computation of error metrics between predicted and ground truth depths
@@ -76,7 +76,77 @@ def load_model(depth_decoder_path, method, model_name, device, decompose=False):
             return load_monovit_model_hr(depth_decoder_path, device)
         else:
             return load_monovit_model_lr()
-            
+
+def spec_score_func(image, binary_mask):
+    # Ensure binary_mask is of type uint8
+    binary_mask = binary_mask.astype(np.uint8)
+    
+    # Find connected components (blobs) in the binary mask
+    num_labels, labels_im = cv2.connectedComponents(binary_mask)
+
+    kernel_size = 5  # Define the size of the surrounding region
+    half_k = kernel_size // 2
+
+    # Pad the image to handle edge cases when extracting surroundings
+    padded_image = np.pad(image, pad_width=half_k, mode='edge')
+
+    # List to store differences between blobs and surroundings
+    blob_differences = []
+
+    for label in range(1, num_labels):  # Start from 1 to skip background
+        # Create a mask for the current blob
+        blob_mask = (labels_im == label).astype(np.uint8)
+
+        # Get the pixel values of the blob
+        blob_pixels = image[blob_mask > 0]
+
+        # Find the bounding box of the blob
+        y_coords, x_coords = np.where(blob_mask > 0)
+        min_y, max_y = np.min(y_coords), np.max(y_coords)
+        min_x, max_x = np.min(x_coords), np.max(x_coords)
+
+        # Expand the bounding box to include the surrounding area
+        expanded_min_y = max(min_y - half_k, 0)
+        expanded_max_y = min(max_y + half_k, image.shape[0] - 1)
+        expanded_min_x = max(min_x - half_k, 0)
+        expanded_max_x = min(max_x + half_k, image.shape[1] - 1)
+
+        # Extract the surrounding region (excluding the blob itself)
+        surrounding_region = padded_image[expanded_min_y:expanded_max_y + 1, expanded_min_x:expanded_max_x + 1]
+
+        # Create a mask for the surrounding region
+        surrounding_mask = np.zeros_like(padded_image, dtype=np.uint8)
+        surrounding_mask[expanded_min_y:expanded_max_y + 1, expanded_min_x:expanded_max_x + 1] = 1
+
+        # Remove blob pixels from surrounding region
+        surrounding_mask[expanded_min_y + (y_coords - min_y), expanded_min_x + (x_coords - min_x)] = 0
+        surrounding_region_no_blob = surrounding_region[surrounding_mask[expanded_min_y:expanded_max_y + 1, expanded_min_x:expanded_max_x + 1] == 1]
+
+
+        # Calculate the mean value of the blob and the surrounding region
+        blob_mean = np.mean(blob_pixels)
+        surrounding_mean = np.mean(surrounding_region_no_blob)
+
+        # Compute the absolute difference between blob and surrounding
+        diff = abs(blob_mean - surrounding_mean)/surrounding_mean
+        blob_differences.append(diff)
+        # print(f"Blob {label}: Mean Blob Value = {blob_mean}, Mean Surrounding Value = {surrounding_mean}, Difference = {diff}")
+    
+    # Set a threshold to consider if a blob is "close" to its surroundings
+    threshold = 0.01  # Example threshold
+
+    # Check if the blob differences are within the threshold
+    close_blobs = [diff < threshold for diff in blob_differences]
+
+    # Report the results
+    if len(close_blobs) == 0:
+        return 0
+    else:
+        percentage_close = sum(close_blobs) / len(close_blobs) * 100
+        # print(f"Percentage of blobs close to their surroundings: {percentage_close:.2f}%")
+        return percentage_close
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -133,7 +203,10 @@ def parse_args():
                         help='use decompose model')
     parser.add_argument("--addedspec", action='store_true',
                         help='use added specularity c3vd dataset')
-
+    parser.add_argument("--maxing", action='store_true',
+                        help='use maxing value for depth values')
+    parser.add_argument("--maxing_value", type=float, default=0.8,
+                        help='maxing value for depth values')
     return parser.parse_args()
 
 
@@ -149,6 +222,7 @@ def test_simple(args, seq):
     errors = []
     errors_masked = []
     ratios = []
+    scores = []
     
     assert args.model_name is not None, \
         "You must specify the --model_name parameter; see README.md for an example"
@@ -219,7 +293,7 @@ def test_simple(args, seq):
     elif os.path.isdir(args.image_path):
         # Searching folder for images
         print(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
-        paths = glob.glob(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
+        paths = sorted(glob.glob(os.path.join(args.image_path, seq, '*.{}'.format(args.ext))))
         output_directory = os.path.join(args.output_path, args.method, args.model_name, args.type_data, seq)
         os.makedirs(output_directory, exist_ok=True)
         if args.method == "IID" and args.decompose:
@@ -289,13 +363,27 @@ def test_simple(args, seq):
             if args.save_depth:
                 if args.input_mask is not None:
                     input_mask_np = input_mask[0, 0, :, :].numpy()
-                    pred_depth[input_mask_np == 0] = 0
-                if pred_depth[pred_depth <= 0.8].size > 0: # threshold 3 for sploss model
-                    pred_depth[pred_depth > 0.8] = np.max(pred_depth[pred_depth <= 0.8]) #IMPORTANT:remove in some cases!
+                    pred_depth[input_mask_np == 0] = 0      
+                pred_depth_raw = pred_depth.copy()      
+                if args.maxing and pred_depth[pred_depth <= args.maxing_value].size > 0: # threshold 3 for sploss model
+                    pred_depth[pred_depth > args.maxing_value] = np.max(pred_depth[pred_depth <= args.maxing_value]) #IMPORTANT:remove in some cases!
                 max_value = np.max(pred_depth)
                 trip_im = pil.fromarray(np.stack((pred_depth*255/max_value,)*3, axis=-1).astype(np.uint8))
                 trip_im.save(name_dest_im_trip)
-                
+                if args.eval is not None:
+                    # load gt 
+                    if args.addedspec:
+                        adjusted_image_path = image_path.replace("AddedSpec", "Dataset")
+                    else:
+                        adjusted_image_path = image_path
+                    # spec mask
+                    spec_mask = pil.open(adjusted_image_path.replace("Dataset", "Annotations_Dilated"))
+                    spec_mask = spec_mask.convert('L')
+                    spec_mask = spec_mask.point( lambda p: 255 if p > 200 else 0 )
+                    spec_mask = np.array(spec_mask.convert('1'))
+                    scores.append(spec_score_func(pred_depth_raw, spec_mask))
+                    
+                    
             if args.method == "IID" and args.decompose:
                 name_dest_im_reflec = os.path.join(output_directory, "decomposed", "{}{}.{}".format("reflect",output_name_trip, args.ext))
                 reflec = outputs[("reflectance",0)].squeeze().cpu().numpy().transpose(1,2,0)
@@ -306,10 +394,9 @@ def test_simple(args, seq):
                 light = outputs[("light",0)].squeeze().cpu().numpy()
                 light_pil = pil.fromarray((light*255).astype(np.uint8))
                 light_pil.save(name_dest_im_light)
-                    
-            
+
                         
-            if args.eval:
+            if args.eval and not args.save_depth:
                 # load gt 
                 if args.addedspec:
                     adjusted_image_path = image_path.replace("AddedSpec", "Dataset")
@@ -377,7 +464,7 @@ def test_simple(args, seq):
                 else:
                     print("No valid pixels in spec_mask")
     
-    if args.eval:
+    if args.eval and not args.save_depth:
         if not args.disable_median_scaling:
             ratios = np.array(ratios)
             med = np.median(ratios)
@@ -387,6 +474,9 @@ def test_simple(args, seq):
         mean_errors_masked = np.array(errors_masked).mean(0)
         
         return mean_errors, mean_errors_masked
+    elif args.eval and args.save_depth:
+        mean_scores = np.array(scores).mean(0)
+        return mean_scores, None
     else:
         return None, None
         
@@ -412,9 +502,13 @@ if __name__ == '__main__':
             notclipped = "_notclipped"
         else: 
             notclipped = ""
-        file =  open(f"{out}results{notclipped}{date}.csv", mode='w')
-        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        writer.writerow(['video', 'mean_rmse', 'mean_rmse_masked'])
+        
+        if args.eval and args.save_depth:
+            score = "specscore_"
+            cols = ['video', 'mean_score', '__']
+        else:
+            score = ""
+            cols = ['video', 'mean_rmse', 'mean_rmse_masked']
     
     args.type_data = ""
     # Check if args.seq is set to 'all'
@@ -432,9 +526,13 @@ if __name__ == '__main__':
         with open(args.image_path) as f:
             images = f.read().splitlines()
         # Extract unique last folder names directly
-        sequences = list({os.path.basename(os.path.normpath(os.path.split(path)[0])) for path in images})
+        sequences = sorted(list({os.path.basename(os.path.normpath(os.path.split(path)[0])) for path in images}))
         args.image_path = os.path.dirname(os.path.dirname(images[0]))
-    
+    if args.eval:
+        file =  open(f"{out}{score}{args.type_data}results{notclipped}{date}.csv", mode='w')
+        writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer.writerow(cols)
+        
     for seq in sequences:
         mean_errors, mean_errors_masked = test_simple(args, seq)
         # save results to csv using unique_dirs

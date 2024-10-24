@@ -15,7 +15,7 @@ def process_images(image_files, pred_depth_files, gt_depth_files=None, colormap 
         # Add the image to the list
         cropped_images.append(img)
 
-    for pred_depth_file in pred_depth_files[1:]:
+    for pred_depth_file in pred_depth_files: #[1:]:
         # Read the image
         img = cv2.imread(pred_depth_file, gray)
         # Apply the colormap

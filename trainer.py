@@ -99,45 +99,53 @@ class Trainer:
                          "c3vd": datasets.C3VDDataset}
         self.dataset = datasets_dict[self.opt.dataset]
 
-        fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
+        if not isinstance(self.opt.split, list):
+            self.opt.split = [self.opt.split]
+            
+        fpath = [os.path.join(os.path.dirname(__file__), "splits", split, "{}_files.txt") for split in self.opt.split]        
         img_ext = '.png' if self.opt.png else '.jpg'
         
-        if self.opt.split == "hk" or self.opt.split == "c3vd":
-            aug = self.opt.aug_type
-            if not os.path.exists(fpath.format(f"train{aug}")):
-                
-                if not isinstance(self.opt.data_path, list):
-                    self.opt.data_path = [self.opt.data_path]
-                
-                train_filenames, test_filenames, val_filenames = self.generate_train_test_val(self.opt.data_path, img_ext)
-                
-                # Extract the directory from the file path pattern
-                directory = os.path.dirname(fpath)
+        val_filenames =[]
+        train_filenames = []
+        for i, split in enumerate(self.opt.split):
+            data_path = self.opt.data_path[i]
+            if split == "hk" or split == "c3vd":
+                aug = self.opt.aug_type
+                if not os.path.exists(fpath[i].format(f"train{aug}")):
+                    
+                    if not isinstance(data_path, list):
+                        data_path = [data_path]
+                    
+                    train_filenames, test_filenames, val_filenames = self.generate_train_test_val(data_path, img_ext)
+                    
+                    # Extract the directory from the file path pattern
+                    directory = os.path.dirname(fpath[i])
 
-                # Ensure the directory exists
-                os.makedirs(directory, exist_ok=True)
+                    # Ensure the directory exists
+                    os.makedirs(directory, exist_ok=True)
+                    
+                    # Save train_filenames to a text file
+                    with open(fpath[i].format(f"train{aug}"), 'w') as f:
+                        for filename in train_filenames:
+                            f.write("%s\n" % filename)
+
+                    # Save test_filenames to a text file
+                    with open(fpath[i].format(f"test{aug}"), 'w') as f:
+                        for filename in test_filenames:
+                            f.write("%s\n" % filename)
+
+                    # Save val_filenames to a text file
+                    with open(fpath[i].format(f"val{aug}"), 'w') as f:
+                        for filename in val_filenames:
+                            f.write("%s\n" % filename)
+                else:
+                    train_filenames.extend(readlines(fpath[i].format(f"train{aug}")))
+                    val_filenames.extend(readlines(fpath[i].format(f"val{aug}")))
                 
-                # Save train_filenames to a text file
-                with open(fpath.format(f"train{aug}"), 'w') as f:
-                    for filename in train_filenames:
-                        f.write("%s\n" % filename)
-
-                # Save test_filenames to a text file
-                with open(fpath.format(f"test{aug}"), 'w') as f:
-                    for filename in test_filenames:
-                        f.write("%s\n" % filename)
-
-                # Save val_filenames to a text file
-                with open(fpath.format(f"val{aug}"), 'w') as f:
-                    for filename in val_filenames:
-                        f.write("%s\n" % filename)
             else:
-                train_filenames = readlines(fpath.format(f"train{aug}"))
-                val_filenames = readlines(fpath.format(f"val{aug}"))
+                train_filenames.extend(readlines(fpath[i].format("train")))
+                val_filenames.extend(readlines(fpath[i].format("val")))
             
-        else:
-            train_filenames = readlines(fpath.format("train"))
-            val_filenames = readlines(fpath.format("val"))
         
         if self.opt.input_mask_path is not None:
             input_mask_pil = Image.open(self.opt.input_mask_path).convert('1').filter(ImageFilter.MinFilter(size=5))

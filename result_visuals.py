@@ -15,7 +15,7 @@ def process_images(decompose, image_files, pred_depth_files, gt_depth_files= Non
         # Add the image to the list
         cropped_images.append(img)
 
-    for pred_depth_file in pred_depth_files:
+    for pred_depth_file in pred_depth_files:# [:1]:
         # Read the image
         img = cv2.imread(pred_depth_file, gray)
         # Apply the colormap
@@ -87,6 +87,7 @@ else:
             image_files = [f"/raid/rema/data/C3VD/Undistorted/{addsptxt}/{seq}/{idx}_color.png"]
             if decompose: gt_depth_files = None 
             else: gt_depth_files = [f"/raid/rema/data/C3VD/Undistorted/Dataset/{seq}/{idx}_depth.tiff"]
+            # gt_depth_files = None
             pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/{addsptxt2}/{model}/finetuned_mono_{data}_288{aug}/models/weights_19/{seq}{prefix[0]}/{prefix[1]}{idx}{prefix[2]}.png" for aug in aug_list]
             # Process the images for each row
             rows.append(process_images(decompose, image_files, pred_depth_files, gt_depth_files, colormap))
