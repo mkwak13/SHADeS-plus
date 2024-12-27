@@ -20,13 +20,36 @@ from utils import download_model_if_doesnt_exist
 import datetime
 import csv
 import cv2
+import pandas as pd
 
-def compute_errors(gt, pred):
+
+def compute_errors(gt, pred, image_path):
     """Computation of error metrics between predicted and ground truth depths
     """
-    rmse = (gt - pred) ** 2
+    gt_mm = gt / 655.35
+    pred_mm = pred / 655.35
+    
+    thresh = np.maximum((gt_mm / pred_mm), (pred_mm / gt_mm))
+    a1 = (thresh < 1.25     ).mean()
+    a2 = (thresh < 1.25 ** 2).mean()
+    a3 = (thresh < 1.25 ** 3).mean()
+
+    # compute MAE and MedAE
+    mAE = np.mean(np.abs(gt_mm - pred_mm))
+    medAE = np.median(np.abs(gt_mm - pred_mm))
+    rmse = (gt_mm - pred_mm) ** 2
     rmse = np.sqrt(rmse.mean())
-    return rmse
+
+    rmse_log = (np.log(gt_mm) - np.log(pred_mm)) ** 2
+    rmse_log = np.sqrt(rmse_log.mean())
+
+    abs_rel = np.mean(np.abs(gt_mm - pred_mm) / gt_mm)
+
+    sq_rel = np.mean(((gt_mm - pred_mm) ** 2) / gt_mm)
+
+    return image_path, mAE, medAE, rmse, rmse_log, abs_rel, sq_rel, a1, a2, a3
+
+
 
 def load_monodepth2_model(method, decompose):
     if method == "monodepth2":
@@ -292,7 +315,7 @@ def test_simple(args, seq):
         output_directory = os.path.dirname(args.image_path)
     elif os.path.isdir(args.image_path):
         # Searching folder for images
-        print(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
+        # print(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
         paths = sorted(glob.glob(os.path.join(args.image_path, seq, '*.{}'.format(args.ext))))
         output_directory = os.path.join(args.output_path, args.method, args.model_name, args.type_data, seq)
         os.makedirs(output_directory, exist_ok=True)
@@ -312,7 +335,7 @@ def test_simple(args, seq):
                 continue
 
             # Load image and preprocess
-            print(image_path)
+            # print(image_path)
             input_image = pil.open(image_path).convert('RGB')
             original_width, original_height = input_image.size
             input_image = input_image.resize((feed_width, feed_height), pil.LANCZOS)
@@ -358,7 +381,7 @@ def test_simple(args, seq):
 
             output_name_trip = os.path.splitext(os.path.basename(image_path))[0]
             name_dest_im_trip = os.path.join(output_directory, "{}.{}".format(output_name_trip, args.ext))
-            print(name_dest_im_trip)      
+            # print(name_dest_im_trip)      
                 
             if args.save_depth:
                 if args.input_mask is not None:
@@ -439,7 +462,7 @@ def test_simple(args, seq):
                     output_name_trip = os.path.splitext(os.path.basename(image_path))[0]
                     name_dest_im_trip = os.path.join(output_directory, "{}_triplet.{}".format(output_name_trip, args.ext))
                     trip_im.save(name_dest_im_trip)
-                    print(name_dest_im_trip)
+                    # print(name_dest_im_trip)
                     
                     
                 pred_depth_masked = pred_depth[mask]
@@ -449,7 +472,7 @@ def test_simple(args, seq):
                     pred_depth_masked[pred_depth_masked < MIN_DEPTH] = MIN_DEPTH
                     pred_depth_masked[pred_depth_masked > MAX_DEPTH] = MAX_DEPTH
                 
-                errors.append(compute_errors(gt_depth_masked, pred_depth_masked))
+                errors.append(compute_errors(gt_depth_masked, pred_depth_masked, image_path))
                 
                 if np.unique(spec_mask*mask).shape[0] == 2:
                     pred_depth_spec_masked = pred_depth[spec_mask*mask]
@@ -460,9 +483,10 @@ def test_simple(args, seq):
                         pred_depth_spec_masked[pred_depth_spec_masked > MAX_DEPTH] = MAX_DEPTH
                     
                     
-                    errors_masked.append(compute_errors(gt_depth_spec_masked, pred_depth_spec_masked))
+                    errors_masked.append(compute_errors(gt_depth_spec_masked, pred_depth_spec_masked, image_path))
                 else:
                     print("No valid pixels in spec_mask")
+                    errors_masked.append([image_path, float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), float("nan")])
     
     if args.eval and not args.save_depth:
         if not args.disable_median_scaling:
@@ -470,13 +494,13 @@ def test_simple(args, seq):
             med = np.median(ratios)
             print(" Scaling ratios | med: {:0.3f} | std: {:0.3f}".format(med, np.std(ratios / med)))
     
-        mean_errors = np.array(errors).mean(0)
-        mean_errors_masked = np.array(errors_masked).mean(0)
+        # mean_errors = np.array(errors).mean(0)
+        # mean_errors_masked = np.array(errors_masked).mean(0)
         
-        return mean_errors, mean_errors_masked
+        return errors, errors_masked
     elif args.eval and args.save_depth:
-        mean_scores = np.array(scores).mean(0)
-        return mean_scores, None
+        # mean_scores = np.array(scores).mean(0)
+        return scores, None
     else:
         return None, None
         
@@ -505,10 +529,10 @@ if __name__ == '__main__':
         
         if args.eval and args.save_depth:
             score = "specscore_"
-            cols = ['video', 'mean_score', '__']
+            cols = ['video', 'path', "mAE", "medAE", "rmse", "rmse_log", "abs_rel", "sq_rel", "a1", "a2", "a3", '__']
         else:
             score = ""
-            cols = ['video', 'mean_rmse', 'mean_rmse_masked']
+            cols = ['video', 'path', "mAE", "medAE", "rmse", "rmse_log", "abs_rel", "sq_rel", "a1", "a2", "a3",  "mAE_masked", "medAE_masked", "rmse_masked", "rmse_log_masked", "abs_rel_masked", "sq_rel_masked", "a1_masked", "a2_masked", "a3_masked"]
     
     args.type_data = ""
     # Check if args.seq is set to 'all'
@@ -534,10 +558,23 @@ if __name__ == '__main__':
         writer.writerow(cols)
         
     for seq in sequences:
-        mean_errors, mean_errors_masked = test_simple(args, seq)
+        errors, errors_masked = test_simple(args, seq)
+        seq_list = [seq]*(len(errors))
         # save results to csv using unique_dirs
+        
+
+        # Create DataFrames from the errors and errors_masked lists
+        df_errors = pd.DataFrame(errors)
+        df_errors_masked = pd.DataFrame(errors_masked)
+
+        # Merge the DataFrames on the image_path column
+        df_merged = pd.merge(df_errors, df_errors_masked,  on=df_errors.columns[0])
+
+        # Insert the sequence name column at the first position
+        df_merged.insert(0, 'sequence_name', seq_list)
+
         if args.eval:
-            writer.writerow([seq, mean_errors, mean_errors_masked])
+            writer.writerows(df_merged.itertuples(index=False, name=None))
 
     if args.eval:
         file.close()
