@@ -2,37 +2,13 @@ import pandas as pd
 import glob
 import re
 
-def highlight_min_max(s):
-    '''
-    highlight the maximum in a Series red and minimum in green.
-    '''
-    if s[0] == '-' : return ['color: black' for _ in s]
-    is_max = s == s.max()
-    is_min = s == s.min()
-    return ['color: red' if v else 'color: green' if c else '' for v, c in zip(is_max, is_min)]
 
-def combine_stats(df, methods, augmentations):
-    # Using a shorter approach to calculate mean and median for each configuration
-    mean_median_stats = df.drop(columns = ['video']).agg(['mean', 'median']).T
-    stats = {}
-    for method in methods:
-        # Calculate stats for each method
-        method_stats = mean_median_stats.loc[[f"{method}{augmentation}" for augmentation in augmentations]].reset_index(drop=True).applymap("{:.1f}".format)
-        method_stats['augmentation'] = augmentations
-        stats[method] = method_stats[['mean', 'median']]
+def process_df(df, method, model):
+    # Calculate the mean for the filtered DataFrame
+    mean_df = df.mean().reset_index()
+    mean_df.columns = ["metric", f'{method}{model}']
 
-    # Combining the stats
-    # Convert method_stats['augmentation'] to a DataFrame
-    augmentation_df = pd.DataFrame(method_stats['augmentation'])
-
-    # Concatenate stats DataFrames from the list comprehension
-    stats_df = pd.concat([stats[method] for method in methods], axis=1)
-
-    # Concatenate augmentation_df with stats_df side by side
-    comb_stats = pd.concat([augmentation_df, stats_df], axis=1)
-    comb_stats.columns = ["augmentations"]+[f'{method}_{stat}' for method in methods for stat in ['mean', 'median']]
-
-    return comb_stats
+    return mean_df
 
 # Read each file into a DataFrame
 IID_pretrained = False
@@ -43,7 +19,7 @@ methods = ['IID'] #['monodepth2', 'monovit', 'IID'] #
 method_strings = "[!s]*" # *mono* or *IID*
 clipped = True
 distorted = False
-singlescale = True
+singlescale = False
 specscale = False
 addedspec = False
 data = "hkfull" #c3vd" #"hkfull"
@@ -60,68 +36,49 @@ dist_pre = "" if distorted else "un"
 
 clip = "notclipped" if not clipped else ""
 
+videos_to_include = ["cecum_t1_a", "cecum_t2_a", "cecum_t3_a",
+                     "sigmoid_t3_a", "desc_t4_a",
+                     "transc_t2_a", "transc_t3_a", "transc_t4_a"
+                     ]  # Replace with your actual video names
+
 if IID_pretrained:
     method_ext = ["", "(.*?)results.*.csv"]
 else:
     method_ext = [f"/*{data}*/models", f"finetuned_mono_{data}_288(.*?)/models/"]    
 
 direc = f"{dist_pre}disttrain/{dist_pre}dist{addsptxt}{scaling}" #"undisttrain/undist" or "disttrain/dist"
-file_paths = sorted(glob.glob(f"/raid/rema/outputs/{direc}/{method_strings}{method_ext[0]}/*{clip}*.csv"))
-pattern = fr"/outputs/{direc}/(.*?)/{dist}{method_ext[1]}"
-        
-dfs_mean_rmse = []
-dfs_mean_rmse_masked = []
+file_paths = sorted(glob.glob(f"/raid/rema/outputs_rebuttal/{direc}/{method_strings}{method_ext[0]}/*19results*{clip}*.csv"))
+file_paths.extend(sorted(glob.glob(f"/raid/rema/outputs_rebuttal/{direc}/{method_strings}{method_ext[0]}/*19inpaintedresults*{clip}*.csv")))
+pattern = fr"/outputs_rebuttal/{direc}/(.*?)/{dist}{method_ext[1]}"
+    
+# Initialize an empty DataFrame to store the combined mean results
+combined_mean_df_fewvideos = pd.DataFrame()
+combined_mean_df_allvideos = pd.DataFrame()
 
 for file_path in file_paths:
     df = pd.read_csv(file_path)
     # Add a column with the method/file name
     method, model = re.findall(pattern, file_path)[0] # Extract method name from file path
+    if "inpainted" in file_path:
+        model = f"{model}_inpainted"
 
-    # Extract mean_rmse and mean_rmse_masked columns
-    df_mean_rmse = df[['video', 'mean_rmse']]
-    df_mean_rmse_masked = df[['video', 'mean_rmse_masked']]
-    # Rename columns
-    df_mean_rmse.columns = ['video', f"{method}{model}"]
-    df_mean_rmse_masked.columns = ['video', f"{method}{model}"]
-    dfs_mean_rmse.append(df_mean_rmse)
-    dfs_mean_rmse_masked.append(df_mean_rmse_masked)
+    # Filter the DataFrame to include only the specified videos
+    df_filtered = df[df['video'].isin(videos_to_include)]
 
-# Initialize the merged dataframes with the first dataframe in the list
-merged_df_mean_rmse = dfs_mean_rmse[0]
-merged_df_mean_rmse_masked = dfs_mean_rmse_masked[0]
+    mean_df_fewvideos = process_df(df_filtered, method, model)
+    mean_df_allvideos = process_df(df, method, model)
+    
+    # Merge the mean values with the combined DataFrame
+    if combined_mean_df_allvideos.empty:
+        combined_mean_df_fewvideos = mean_df_fewvideos
+        combined_mean_df_allvideos = mean_df_allvideos
+    else:
+        combined_mean_df_fewvideos = pd.merge(combined_mean_df_fewvideos, mean_df_fewvideos, on="metric", how="outer")
+        combined_mean_df_allvideos = pd.merge(combined_mean_df_allvideos, mean_df_allvideos, on="metric", how="outer")
 
-# Merge the rest of the dataframes
-for df in dfs_mean_rmse[1:]:
-    merged_df_mean_rmse = merged_df_mean_rmse.merge(df, on='video')
-
-for df in dfs_mean_rmse_masked[1:]:
-    merged_df_mean_rmse_masked = merged_df_mean_rmse_masked.merge(df, on='video')
-
-# Define the new order of the columns
-new_order = ['video']
-for method in methods:
-    new_order.extend([f"{method}{augmentation}" for augmentation in augmentations])
-
-# Reorder the columns
-merged_df_mean_rmse = merged_df_mean_rmse[new_order]
-merged_df_mean_rmse_masked = merged_df_mean_rmse_masked[new_order]
-
-merged_df_mean_rmse.iloc[:,1:] = merged_df_mean_rmse.iloc[:,1:]/655.35
-merged_df_mean_rmse_masked.iloc[:,1:] = merged_df_mean_rmse_masked.iloc[:,1:]/655.35
-
-# Display the merged DataFrames
-print("Mean RMSE:")
-print(merged_df_mean_rmse)
-print("\nMean RMSE Masked:")
-print(merged_df_mean_rmse_masked)
-
-stats = combine_stats(merged_df_mean_rmse, methods, augmentations).style.apply(highlight_min_max)
-stats_masked= combine_stats(merged_df_mean_rmse_masked, methods, augmentations).style.apply(highlight_min_max)
 
 
 # save to csv
-output = f"/raid/rema/outputs/{direc}"
-merged_df_mean_rmse.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse.xlsx', index=False)
-merged_df_mean_rmse_masked.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_masked.xlsx', index=False)
-stats.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_stats.xlsx', index=False)
-stats_masked.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_stats_masked.xlsx', index=False)
+output = f"/raid/rema/outputs_rebuttal/{direc}"
+combined_mean_df_allvideos.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_allvideos.xlsx', index=False)
+combined_mean_df_fewvideos.to_excel(f'{output}/{clip}{augmentations}{data}results_rmse_fewvideos.xlsx', index=False)

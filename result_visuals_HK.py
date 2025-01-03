@@ -81,9 +81,9 @@ else:
         rows = []
         for seq, idx in zip(seq_list, idx_list):
             image_files = [f"/raid/rema/data/BBPS-2-3Frames/Undistorted/Frames/{seq}/{idx}.png"]
-            pred_depth_files = [f"/raid/rema/outputs/undisttrain/undist/{model}/finetuned_mono_hkfull_288{aug}/models/weights_19/hk/{seq}{prefix[0]}/{prefix[1]}{idx}.png" for aug in aug_list]
-            pred_depth_files.insert(1, f"/raid/rema/outputs/undisttrain/undist/{model}/finetuned_mono_hkfull_288{aug_list[0]}/models/weights_19/hkinpainted/{seq}{prefix[0]}/{prefix[1]}{idx}.png")
-            # pred_depth_files.extend([f"/raid/rema/outputs/undisttrain/undist/{model}/finetuned_mono_hk_288{aug_list[-1]}/models/weights_29/{seq}{prefix[0]}/{prefix[1]}{idx}.png"])
+            pred_depth_files = [f"/raid/rema/outputs_rebuttal/undisttrain/undist/{model}/finetuned_mono_hkfull_288{aug}/models/weights_19/hk/{seq}{prefix[0]}/{prefix[1]}{idx}.png" for aug in aug_list]
+            pred_depth_files.insert(1, f"/raid/rema/outputs_rebuttal/undisttrain/undist/{model}/finetuned_mono_hkfull_288{aug_list[0]}/models/weights_19/hkinpainted/{seq}{prefix[0]}/{prefix[1]}{idx}.png")
+            # pred_depth_files.extend([f"/raid/rema/outputs_rebuttal/undisttrain/undist/{model}/finetuned_mono_hk_288{aug_list[-1]}/models/weights_29/{seq}{prefix[0]}/{prefix[1]}{idx}.png"])
 
             # Process the images for each row
             rows.append(process_images(image_files, pred_depth_files, gt_depth_files=None, colormap = colormap))
@@ -92,4 +92,4 @@ else:
         result = np.vstack(rows)
 
         # Save the result
-        cv2.imwrite(f'/raid/rema/outputs/undisttrain/undist/visualresults{color}{prefix[1]}{model}HK2{str(aug_list)}.png', result)
+        cv2.imwrite(f'/raid/rema/outputs_rebuttal/undisttrain/undist/visualresults{color}{prefix[1]}{model}HK2{str(aug_list)}.png', result)
