@@ -25,8 +25,7 @@ Use Python 3.7 and install the following packages:
 pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
 pip install dominate==2.4.0 Pillow==6.1.0 visdom==0.1.8
 pip install tensorboardX==1.4 opencv-python  matplotlib scikit-image
-pip3 install mmcv-full==1.3.0 mmsegmentation==0.11.0  
-pip install timm einops IPython
+pip install einops IPython
 pip install protobuf==3.20.0
 pip install gdown
 pip install scikit-learn
