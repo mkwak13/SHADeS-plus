@@ -8,3 +8,7 @@ notneeded
 Datasets
 readme.txt
 myenv
+datasets/
+data/
+checkpoints/
+logs/
