@@ -314,7 +314,12 @@ def test_simple(args, seq):
     if os.path.isfile(args.image_path):
         # Only testing on a single image
         paths = [args.image_path]
-        output_directory = os.path.dirname(args.image_path)
+
+        #?? wtf? why overwrite original image with changed
+        #output_directory = os.path.dirname(args.image_path)
+        output_directory = args.output_path
+        os.makedirs(output_directory, exist_ok=True)
+
     elif os.path.isdir(args.image_path):
         # Searching folder for images
         # print(os.path.join(args.image_path, seq, '*.{}'.format(args.ext)))
