@@ -561,6 +561,8 @@ if __name__ == '__main__':
         writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(cols)
         
+    sequences = [args.image_path]
+
     for seq in sequences:
         errors, errors_masked = test_simple(args, seq)
         if args.eval:
