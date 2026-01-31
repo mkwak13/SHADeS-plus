@@ -402,11 +402,15 @@ def test_simple(args, seq):
                     else:
                         adjusted_image_path = image_path
                     # spec mask
-                    spec_mask = pil.open(adjusted_image_path.replace("Dataset", "Annotations_Dilated").replace("Inpainted_HKgen9","Annotations_Dilated"))
-                    spec_mask = spec_mask.convert('L')
-                    spec_mask = spec_mask.point( lambda p: 255 if p > 200 else 0 )
-                    spec_mask = np.array(spec_mask.convert('1'))
-                    scores.append(spec_score_func(pred_depth_raw, spec_mask, image_path))
+
+                    spec_mask = None
+                    #set mask as none because c3vd annotations are not provided in github
+                    if spec_mask is not None:
+                        spec_mask = pil.open(adjusted_image_path.replace("Dataset", "Annotations_Dilated").replace("Inpainted_HKgen9","Annotations_Dilated"))
+                        spec_mask = spec_mask.convert('L')
+                        spec_mask = spec_mask.point( lambda p: 255 if p > 200 else 0 )
+                        spec_mask = np.array(spec_mask.convert('1'))
+                        scores.append(spec_score_func(pred_depth_raw, spec_mask, image_path))
                     
                     
             if args.method == "IID" and args.decompose:
