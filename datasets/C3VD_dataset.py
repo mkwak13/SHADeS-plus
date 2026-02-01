@@ -58,7 +58,15 @@ class C3VDDataset(C3VDInitDataset):
         super(C3VDDataset, self).__init__(*args, **kwargs)
 
     def get_image_path(self, folder, frame_index, side):
-        #remove zero padding to find color pngs in cecum_t1_a
+        
+        #try without zero padding
         f_str = "{}_color{}".format(frame_index, self.img_ext)
         image_path = os.path.join(folder, f_str)
+        if os.path.exists(image_path):
+            return image_path
+        
+        #fallback: with zero padding
+        f_str = "{:04d}_color{}".format(frame_index, self.img_ext)
+        image_path = os.path.join(folder, f_str)
+
         return image_path
