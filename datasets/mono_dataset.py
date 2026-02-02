@@ -66,6 +66,8 @@ class MonoDataset(data.Dataset):
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
 
+        self.frame_range_cache = {}
+
         # We need to specify augmentations differently in newer versions of torchvision.
         # We first try the newer tuple version; if this fails we fall back to scalars
         try:
@@ -223,6 +225,28 @@ class MonoDataset(data.Dataset):
                 side = line[2]
             else:
                 side = None
+
+        #check frame boundary
+        if folder not in self.frame_range_cache:
+            frame_files = [
+                f for f in os.listdir(folder)
+                if f.endswith("_color" + self.img_ext)
+            ]
+
+            indices = sorted([
+                int(re.search(r'\d+', f).group())
+                for f in frame_files
+            ])
+
+            self.frame_range_cache[folder] = (indices[0], indices[-1])
+
+        min_idx, max_idx = self.frame_range_cache[folder]
+
+        if frame_index + max(self.frame_idxs) > max_idx:
+            raise IndexError
+
+        if frame_index + min(self.frame_idxs) < min_idx:
+            raise IndexError
 
         for i in self.frame_idxs:
             if isinstance(self.inpaint_pseudo_gt_dir, list):
