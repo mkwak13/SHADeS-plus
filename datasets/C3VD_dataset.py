@@ -61,7 +61,7 @@ class C3VDDataset(C3VDInitDataset):
         
         #try without zero padding
         f_str = "{}_color{}".format(frame_index, self.img_ext)
-        image_path = os.path.join(folder, f_str)
+        image_path = os.path.join(self.data_path, folder, f_str)
         if os.path.exists(image_path):
             return image_path
         
