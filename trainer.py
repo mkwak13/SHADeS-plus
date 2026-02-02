@@ -253,9 +253,9 @@ class Trainer:
                 ]
                 
                 # Extend the lists with filenames from the current data_path
-                train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in train_seq])))
-                test_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in test_seq])))
-                val_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in val_seq])))
+                train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*color{img_ext}")))[1:-1] for seq in train_seq])))
+                test_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*color{img_ext}")))[1:-1] for seq in test_seq])))
+                val_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*color{img_ext}")))[1:-1] for seq in val_seq])))
             
             return train_filenames, test_filenames, val_filenames
             
