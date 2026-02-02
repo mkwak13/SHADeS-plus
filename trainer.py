@@ -218,7 +218,7 @@ class Trainer:
     def generate_train_test_val(self, data_path, img_ext):
         if "hk" in self.opt.split:
             traintestval = []
-            for data_path in self.opt.data_path:
+            for data_path in data_path:
                 contents_lists = glob.glob(os.path.join(data_path, "*"))
                 sub_files =[]
                 for subdir in contents_lists:
