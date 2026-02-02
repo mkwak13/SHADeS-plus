@@ -244,7 +244,10 @@ class Trainer:
                             "sigmoid_t1_a", "sigmoid_t2_a", "sigmoid_t3_b", "trans_t1_a",
                             "trans_t1_b", "trans_t2_a", "trans_t2_b", "trans_t2_c",
                             "trans_t3_a", "trans_t3_b", "trans_t4_b"]
-                val_seq = []
+                val_seq = [
+                    "cecum_t3_a",
+                    "sigmoid_t2_a"
+                ]
                 
                 # Extend the lists with filenames from the current data_path
                 train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in train_seq])))
