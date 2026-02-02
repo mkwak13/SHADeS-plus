@@ -3,7 +3,7 @@
   "log_dir": "models/shadespp",
   "tau": 0.05,
 
-  "data_path": ["datasets/C3VD/Dataset"],
+  "data_path": "datasets/C3VD/Dataset",
   "split": "c3vd",
   "dataset": "c3vd",
   "height": 288,
