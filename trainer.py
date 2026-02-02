@@ -108,7 +108,7 @@ class Trainer:
         val_filenames =[]
         train_filenames = []
         for i, split in enumerate(self.opt.split):
-            data_path = self.opt.data_path[i]
+            data_path = self.opt.data_path
             if split == "hk" or split == "c3vd":
                 aug = self.opt.aug_type
                 if not os.path.exists(fpath[i].format(f"train{aug}")):
@@ -116,7 +116,7 @@ class Trainer:
                     if not isinstance(data_path, list):
                         data_path = [data_path]
                     
-                    train_filenames, test_filenames, val_filenames = self.generate_train_test_val(data_path, img_ext)
+                    train_filenames, test_filenames, val_filenames = self.generate_train_test_val(split, data_path, img_ext)
                     
                     # Extract the directory from the file path pattern
                     directory = os.path.dirname(fpath[i])
@@ -215,8 +215,8 @@ class Trainer:
         self.save_opts()
 
 
-    def generate_train_test_val(self, data_path, img_ext):
-        if self.opt.split == "hk":
+    def generate_train_test_val(self, split, data_path, img_ext):
+        if split == "hk":
             traintestval = []
             for data_path in self.opt.data_path:
                 contents_lists = glob.glob(os.path.join(data_path, "*"))
@@ -231,13 +231,13 @@ class Trainer:
             test_filenames = list(chain.from_iterable([traintestval[i][1] for i in range(len(traintestval))]))
             val_filenames = list(chain.from_iterable([traintestval[i][2] for i in range(len(traintestval))]))
             return train_filenames, test_filenames, val_filenames
-        if self.opt.split == "c3vd":
+        elif split == "c3vd":
             # Initialize empty lists to accumulate filenames
             train_filenames = []
             test_filenames = []
             val_filenames = []
             
-            for data_path in self.opt.data_path:
+            for dp in self.opt.data_path:
                 test_seq = ["cecum_t2_b", "trans_t4_a", "sigmoid_t3_a"]
                 train_seq = ["cecum_t1_a", "cecum_t1_b", "cecum_t2_a", "cecum_t2_c",
                             "cecum_t3_a", "cecum_t4_a", "cecum_t4_b", "desc_t4_a",
@@ -250,9 +250,9 @@ class Trainer:
                 ]
                 
                 # Extend the lists with filenames from the current data_path
-                train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in train_seq])))
-                test_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in test_seq])))
-                val_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(data_path, seq, f"*{img_ext}")))[1:-1] for seq in val_seq])))
+                train_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in train_seq])))
+                test_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in test_seq])))
+                val_filenames.extend(list(chain.from_iterable([sorted(glob.glob(os.path.join(dp, seq, f"*{img_ext}")))[1:-1] for seq in val_seq])))
             
             return train_filenames, test_filenames, val_filenames
             
