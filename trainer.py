@@ -499,6 +499,7 @@ class Trainer:
 
         return reprojection_loss
     
+    #updated method for SHADeS++
     def compute_losses(self, inputs, outputs):
 
         losses = {}
@@ -507,17 +508,45 @@ class Trainer:
         loss_reprojection = 0
         loss_disp_smooth = 0
         loss_reconstruction = 0
+        tau = 0.15
         inpaint = "inpaint_" if self.opt.inpaint_pseudo_gt_dir is not None else ""
+
+        # new reconstruction loss
         for frame_id in self.opt.frame_ids:
-            outputs[("specular_color", frame_id, 0)] = torch.abs(transforms.functional.rgb_to_grayscale(inputs[("color_aug", frame_id, 0)]) - transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)]))
-            outputs[("specular_color_pseudo", frame_id, 0)] = torch.abs(transforms.functional.rgb_to_grayscale(inputs[(inpaint+"color_aug", frame_id, 0)]) - transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)]))
-            loss_reconstruction += (self.compute_reprojection_loss(inputs[(inpaint+"color_aug", frame_id, 0)], outputs[("reprojection_color", 0, frame_id)])).mean()
+            spec = torch.abs(
+                transforms.functional.rgb_to_grayscale(inputs[("color_aug", frame_id, 0)]) -
+                transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)])
+            )
+            outputs[("specular_color", frame_id, 0)] = spec
+
+            M_soft = torch.clamp(spec / tau, 0.0, 1.0)
+
+            raw = inputs[("color_aug", frame_id, 0)]
+            pred = outputs[("reprojection_color", 0, frame_id)]
+
+            loss_reconstruction += ((1 - M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
+
+
 
         for frame_id in self.opt.frame_ids[1:]: 
             mask = outputs[("valid_mask", 0, frame_id)]
             mask_comb = mask.clone()
             reflec_loss_item = torch.abs(outputs[("reflectance",0,0)] - outputs[("reflectance_warp", 0, frame_id)]).mean(1, True)
-            reprojection_loss_item = self.compute_reprojection_loss(inputs[(inpaint+"color_aug", 0, 0)], outputs[("reprojection_color_warp", 0, frame_id)])
+
+            raw = inputs[("color_aug", 0, 0)]
+            pred = outputs[("reprojection_color_warp", 0, frame_id)]
+
+            M_soft = torch.clamp(
+                outputs[("specular_color", 0, 0)].detach() / tau,
+                0.0, 1.0
+            )
+
+            reprojection_loss_item = (
+                (1 - M_soft) *
+                self.compute_reprojection_loss(raw, pred)
+            )
+
+
             if self.opt.automasking:
                 identity_reprojection_loss_item = self.compute_reprojection_loss(inputs[("color", frame_id, 0)], inputs[("color", 0, 0)])
                 # add random numbers to break ties
@@ -526,8 +555,15 @@ class Trainer:
                 mask_comb = mask * mask_idt
                 outputs["identity_selection"] = mask_comb.clone()
 
-            loss_reflec += (reflec_loss_item * mask_comb).sum() / mask_comb.sum()
-            loss_reprojection += (reprojection_loss_item * mask_comb).sum() / mask_comb.sum()
+            weighted_mask = mask_comb * (1 - M_soft)
+
+            loss_reflec += (
+                reflec_loss_item * weighted_mask
+            ).sum() / (weighted_mask.sum() + 1e-6)
+
+            loss_reprojection += (
+                reprojection_loss_item * weighted_mask
+            ).sum() / (weighted_mask.sum() + 1e-6)
 
 
         disp = outputs[("disp", 0)]
@@ -546,7 +582,18 @@ class Trainer:
                       self.opt.reconstruction_constraint*(loss_reconstruction/3.0) + 
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
 
+        M0 = torch.clamp(outputs[("specular_color", 0, 0)] / tau, 0.0, 1.0)
+
+        loss_mask_l1 = M0.mean()
+        loss_mask_tv = (
+            torch.abs(M0[:, :, :, :-1] - M0[:, :, :, 1:]).mean() +
+            torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
+        )
+
+        total_loss += 0.01 * loss_mask_l1 + 0.1 * loss_mask_tv
+
         losses["loss"] = total_loss
+
         return losses
     
     def val(self):
