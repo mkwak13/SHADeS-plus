@@ -214,7 +214,7 @@ class MonoDataset(data.Dataset):
 
             side = None
         else:
-            folder = line[0]
+            folder = os.path.join(self.data_path, line[0])
 
             if len(line) == 3:
                 frame_index = int(line[1])
