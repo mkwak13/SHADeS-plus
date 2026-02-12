@@ -11,6 +11,8 @@
   "png": true,
 
   "automasking": true,
-  "noadjust": true
+  "noadjust": true,
 
+  "save_frequency": 1,
+  "num_epochs": 5
 }
