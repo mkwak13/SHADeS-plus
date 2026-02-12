@@ -55,8 +55,8 @@ def batch_post_process_disparity(l_disp, r_disp):
 def evaluate(opt):
     """Evaluates a pretrained model using a specified test set
     """
-    MIN_DEPTH = 1e-3
-    MAX_DEPTH = 150
+    MIN_DEPTH = 0.01
+    MAX_DEPTH = 10
 
     assert sum((opt.eval_mono, opt.eval_stereo)) == 1, \
         "Please choose mono or stereo evaluation by setting either --eval_mono or --eval_stereo"
@@ -152,6 +152,8 @@ def evaluate(opt):
     for i in range(pred_disps.shape[0]):
 
         gt_depth = gt_depths[i]
+        gt_depth = gt_depth.astype(np.float32)
+        gt_depth /= 1000.0   # mm ? meter
         gt_height, gt_width = gt_depth.shape[:2]
 
         pred_disp = pred_disps[i]
