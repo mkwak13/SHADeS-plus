@@ -543,11 +543,14 @@ class Trainer:
             contrast = (gray_input / (local_mean + 1e-6)).detach()
 
             # contrast-aware spec
-            spec = residual * contrast
+            spec = torch.abs(
+                inputs[("color_aug", frame_id, 0)] -
+                outputs[("reflectance", 0, frame_id)]
+            )
 
             outputs[("specular_color", frame_id, 0)] = spec
 
-            M_soft = torch.clamp(spec / tau, 0.0, 1.0).detach()
+            M_soft = torch.clamp(spec.mean(1, keepdim=True) / tau, 0, 1)
 
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
@@ -566,9 +569,10 @@ class Trainer:
             pred = outputs[("reprojection_color_warp", 0, frame_id)]
 
             M_soft = torch.clamp(
-                outputs[("specular_color", 0, 0)].detach() / tau,
+                outputs[("specular_color", 0, 0)].mean(1, keepdim=True).detach() / tau,
                 0.0, 1.0
             )
+
 
             reprojection_loss_item = (
                 (1 - M_soft) *
@@ -591,8 +595,9 @@ class Trainer:
             ).sum() / (weighted_mask.sum() + 1e-6)
 
             loss_reprojection += (
-                reprojection_loss_item * weighted_mask
-            ).sum() / (weighted_mask.sum() + 1e-6)
+                reprojection_loss_item * mask_comb
+            ).sum() / (mask_comb.sum() + 1e-6)
+
 
 
         disp = outputs[("disp", 0)]
