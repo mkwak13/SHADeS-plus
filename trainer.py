@@ -525,10 +525,26 @@ class Trainer:
 
         # new reconstruction loss
         for frame_id in self.opt.frame_ids:
-            spec = torch.abs(
-                transforms.functional.rgb_to_grayscale(inputs[("color_aug", frame_id, 0)]) -
-                transforms.functional.rgb_to_grayscale(outputs[("reprojection_color", 0, frame_id)])
+
+            gray_input = transforms.functional.rgb_to_grayscale(
+                inputs[("color_aug", frame_id, 0)]
             )
+
+            gray_reproj = transforms.functional.rgb_to_grayscale(
+                outputs[("reprojection_color", 0, frame_id)]
+            )
+
+            # residual
+            residual = torch.abs(gray_input - gray_reproj)
+
+            # local contrast
+            local_mean = F.avg_pool2d(gray_input, kernel_size=7, stride=1, padding=3)
+
+            contrast = gray_input / (local_mean + 1e-6)
+
+            # contrast-aware spec
+            spec = residual * contrast
+
             outputs[("specular_color", frame_id, 0)] = spec
 
             M_soft = torch.clamp(spec / tau, 0.0, 1.0)
@@ -537,6 +553,7 @@ class Trainer:
             pred = outputs[("reprojection_color", 0, frame_id)]
 
             loss_reconstruction += ((1 - M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
+
 
 
 
