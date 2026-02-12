@@ -81,6 +81,27 @@ def evaluate(opt):
                                             [0], 4, is_train=False)
             dataloader = DataLoader(dataset, 16, shuffle=False, num_workers=opt.num_workers,
                                     pin_memory=True, drop_last=False)
+        elif opt.eval_split == "c3vd":
+            dataset = datasets.C3VDDataset(
+                opt.data_path,
+                filenames,
+                encoder_dict['height'],
+                encoder_dict['width'],
+                [0],
+                4,
+                is_train=False,
+                img_ext=".png" if opt.png else ".jpg"
+            )
+
+            dataloader = DataLoader(
+                dataset,
+                16,
+                shuffle=False,
+                num_workers=opt.num_workers,
+                pin_memory=True,
+                drop_last=False
+            )
+
 
         encoder = networks.ResnetEncoder(opt.num_layers, False)
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, scales=range(4))
