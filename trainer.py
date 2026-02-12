@@ -547,7 +547,7 @@ class Trainer:
 
             outputs[("specular_color", frame_id, 0)] = spec
 
-            M_soft = torch.clamp(spec / tau, 0.0, 1.0)
+            M_soft = torch.clamp(spec / tau, 0.0, 1.0).detach()
 
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
