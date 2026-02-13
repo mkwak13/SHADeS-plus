@@ -628,6 +628,11 @@ class Trainer:
 
         losses["loss"] = total_loss
 
+        #debug log
+        losses["mean_light"] = outputs[("light", 0, 0)].mean()
+        losses["mean_reflectance"] = outputs[("reflectance", 0, 0)].mean()
+        losses["mean_input"] = inputs[("color_aug", 0, 0)].mean()
+
         return losses
 
     def val(self):
