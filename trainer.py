@@ -409,7 +409,17 @@ class Trainer:
         for f_i in self.opt.frame_ids:
             decompose_features = self.models["decompose_encoder"](inputs[("color_aug",f_i,0)])
             outputs[("reflectance",0,f_i)],outputs[("light",0,f_i)] = self.models["decompose"](decompose_features)
-            outputs[("reprojection_color", 0, f_i)] = outputs[("reflectance", 0, f_i)]*outputs[("light", 0, f_i)]
+            
+            spec = torch.abs(
+                inputs[("color_aug", f_i, 0)] -
+                outputs[("reflectance", 0, f_i)]
+            )
+
+            M_soft = torch.clamp(spec.mean(1, keepdim=True) / self.opt.tau, 0, 1)
+
+            R_clean = outputs[("reflectance", 0, f_i)] * (1 - M_soft)
+
+            outputs[("reprojection_color", 0, f_i)] = R_clean * outputs[("light", 0, f_i)]
 
     def decompose_postprocess(self,inputs,outputs):
         disp = outputs[("disp", 0)]
