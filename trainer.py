@@ -556,7 +556,8 @@ class Trainer:
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
 
-            loss_reconstruction += ((M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
+            weight = 0.2 + 0.8 * M_soft
+            loss_reconstruction += (weight * self.compute_reprojection_loss(raw, pred)).mean()
 
 
 
@@ -573,8 +574,9 @@ class Trainer:
 
 
 
+            weight = 0.2 + 0.8 * M_soft
             reprojection_loss_item = (
-                (M_soft) *
+                weight *
                 self.compute_reprojection_loss(raw, pred)
             )
 
