@@ -550,7 +550,8 @@ class Trainer:
 
             outputs[("specular_color", frame_id, 0)] = spec
 
-            M_soft = torch.clamp(spec.mean(1, keepdim=True).detach() / tau, 0, 1)
+            x = spec.mean(1, keepdim=True).detach()
+            M_soft = torch.sigmoid((x - tau) * 15.0)
 
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
@@ -567,10 +568,9 @@ class Trainer:
             raw = inputs[("color_aug", 0, 0)]
             pred = outputs[("reprojection_color_warp", 0, frame_id)]
 
-            M_soft = torch.clamp(
-                outputs[("specular_color", 0, 0)].mean(1, keepdim=True).detach() / tau,
-                0.0, 1.0
-            )
+            x = outputs[("specular_color", 0, 0)].mean(1, keepdim=True).detach()
+            M_soft = torch.sigmoid((x - tau) * 15.0)
+
 
 
             reprojection_loss_item = (
@@ -618,7 +618,8 @@ class Trainer:
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
 
 
-        M0 = torch.clamp(outputs[("specular_color", 0, 0)] / tau, 0.0, 1.0)
+        x0 = outputs[("specular_color", 0, 0)].mean(1, keepdim=True)
+        M0 = torch.sigmoid((x0 - tau) * 15.0)
 
         loss_mask_l1 = M0.mean()
         loss_mask_tv = (
