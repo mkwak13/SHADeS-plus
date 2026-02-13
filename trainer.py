@@ -555,7 +555,7 @@ class Trainer:
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
 
-            loss_reconstruction += ((1 - M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
+            loss_reconstruction += ((M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
 
 
 
@@ -574,7 +574,7 @@ class Trainer:
 
 
             reprojection_loss_item = (
-                (1 - M_soft) *
+                (M_soft) *
                 self.compute_reprojection_loss(raw, pred)
             )
 
@@ -587,7 +587,7 @@ class Trainer:
                 mask_comb = mask * mask_idt
                 outputs["identity_selection"] = mask_comb.clone()
 
-            weighted_mask = mask_comb * (1 - M_soft)
+            weighted_mask = mask_comb * (M_soft)
 
             loss_reflec += (
                 reflec_loss_item * weighted_mask
