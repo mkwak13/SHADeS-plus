@@ -629,7 +629,7 @@ class Trainer:
                 M_soft * torch.abs(R - raw)
             ).mean()
 
-        total_loss += 0.2 * loss_spec_suppression
+        total_loss += 0.05 * loss_spec_suppression
 
 
         M0 = torch.clamp(outputs[("specular_color", 0, 0)] / tau, 0.0, 1.0)
