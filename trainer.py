@@ -28,7 +28,6 @@ class Trainer:
         self.opt = options
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
 
-
         # normalize data_path once
         if isinstance(self.opt.data_path, str):
             self.opt.data_path = [os.path.abspath(self.opt.data_path)]
@@ -409,9 +408,7 @@ class Trainer:
     def decompose(self,inputs,outputs):
         for f_i in self.opt.frame_ids:
             decompose_features = self.models["decompose_encoder"](inputs[("color_aug",f_i,0)])
-            outputs[("reflectance",0,f_i)], \
-            outputs[("light",0,f_i)], \
-            outputs[("mask",0,f_i)] = self.models["decompose"](decompose_features)
+            outputs[("reflectance",0,f_i)],outputs[("light",0,f_i)] = self.models["decompose"](decompose_features)
             outputs[("reprojection_color", 0, f_i)] = outputs[("reflectance", 0, f_i)]*outputs[("light", 0, f_i)]
 
     def decompose_postprocess(self,inputs,outputs):
@@ -529,13 +526,38 @@ class Trainer:
         # new reconstruction loss
         for frame_id in self.opt.frame_ids:
 
-            M_soft = outputs[("mask", 0, frame_id)]
+            gray_input = transforms.functional.rgb_to_grayscale(
+                inputs[("color_aug", frame_id, 0)]
+            )
+
+            gray_reproj = transforms.functional.rgb_to_grayscale(
+                outputs[("reprojection_color", 0, frame_id)]
+            )
+
+            # residual
+            residual = torch.abs(gray_input - gray_reproj)
+
+            # local contrast
+            local_mean = F.avg_pool2d(gray_input, 7, 1, 3)
+
+            contrast = (gray_input / (local_mean + 1e-6)).detach()
+
+            # contrast-aware spec
+            spec = torch.abs(
+                inputs[("color_aug", frame_id, 0)] -
+                outputs[("reflectance", 0, frame_id)]
+            )
+
+            outputs[("specular_color", frame_id, 0)] = spec
+
+            x = spec.mean(1, keepdim=True).detach()
+            M_soft = torch.sigmoid((x - tau) * 15.0)
 
             raw = inputs[("color_aug", frame_id, 0)]
             pred = outputs[("reprojection_color", 0, frame_id)]
 
-            
-            loss_reconstruction += ((1 - M_soft) * self.compute_reprojection_loss(raw, pred)).mean()
+            weight = 0.2 + 0.8 * M_soft
+            loss_reconstruction += (weight * self.compute_reprojection_loss(raw, pred)).mean()
 
 
 
@@ -547,10 +569,14 @@ class Trainer:
             raw = inputs[("color_aug", 0, 0)]
             pred = outputs[("reprojection_color_warp", 0, frame_id)]
 
-            M_soft = outputs[("mask", 0, 0)]
+            x = outputs[("specular_color", 0, 0)].mean(1, keepdim=True).detach()
+            M_soft = torch.sigmoid((x - tau) * 15.0)
 
+
+
+            weight = 0.2 + 0.8 * M_soft
             reprojection_loss_item = (
-                (1 - M_soft) *
+                weight *
                 self.compute_reprojection_loss(raw, pred)
             )
 
@@ -563,15 +589,15 @@ class Trainer:
                 mask_comb = mask * mask_idt
                 outputs["identity_selection"] = mask_comb.clone()
 
-            weighted_mask = mask_comb * (1 - M_soft)
+            weighted_mask = mask_comb * (M_soft)
 
             loss_reflec += (
                 reflec_loss_item * weighted_mask
-            ).sum() / (weighted_mask.sum() + 1e-6)
+            ).mean()
 
             loss_reprojection += (
                 reprojection_loss_item * mask_comb
-            ).sum() / (mask_comb.sum() + 1e-6)
+            ).mean()
 
 
 
@@ -592,25 +618,21 @@ class Trainer:
                       self.opt.disparity_smoothness*loss_disp_smooth + 
                       self.opt.reconstruction_constraint*(loss_reconstruction/3.0) + 
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
-        
-        M_soft = outputs[("mask", 0, 0)]
 
-        target_ratio = 0.05
-        loss_area = torch.abs(M_soft.mean() - target_ratio)
+        # Direct specular suppression
+        loss_spec_direct = outputs[("specular_color", 0, 0)].mean()
+        total_loss += 0.5 * loss_spec_direct
 
-        eps = 1e-6
-        loss_entropy = -(
-            M_soft * torch.log(M_soft + eps) +
-            (1 - M_soft) * torch.log(1 - M_soft + eps)
-        ).mean()
+        x0 = outputs[("specular_color", 0, 0)].mean(1, keepdim=True)
+        M0 = torch.sigmoid((x0 - tau) * 15.0)
 
+        loss_mask_l1 = M0.mean()
         loss_mask_tv = (
-            torch.abs(M_soft[:, :, :, :-1] - M_soft[:, :, :, 1:]).mean() +
-            torch.abs(M_soft[:, :, :-1, :] - M_soft[:, :, 1:, :]).mean()
+            torch.abs(M0[:, :, :, :-1] - M0[:, :, :, 1:]).mean() +
+            torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.1 * loss_area + 0.01 * loss_entropy + 0.1 * loss_mask_tv
-
+        total_loss += 0.01 * loss_mask_l1 + 0.1 * loss_mask_tv
 
         losses["loss"] = total_loss
 
@@ -675,9 +697,9 @@ class Trainer:
                 writer.add_image(
                         "AS_reprojection/{}".format(j),
                         outputs[("reprojection_color", 0, 0)][j].data, self.step)
-                writer.add_image("Mask/{}".format(j),
-                        outputs[("mask",0,0)][j].data,
-                        self.step)
+                writer.add_image(
+                        "Specular_I-AS/{}".format(j),
+                        outputs[("specular_color", 0, 0)][j].data, self.step)
                 # no longer handling pseudo GT
                 if ("specular_color_pseudo", 0, 0) in outputs:
                     writer.add_image(
@@ -749,4 +771,3 @@ class Trainer:
             pretrained_dict = torch.load(path)
             pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
             model_dict.update(pretrained_dict)
-            self.models[n].load_state_dict(model_dict)
