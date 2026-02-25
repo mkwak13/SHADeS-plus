@@ -612,8 +612,10 @@ class Trainer:
 
         total_loss += 0.01 * loss_mask_l1 + 0.1 * loss_mask_tv
 
+        losses["loss_reprojection"] = loss_reprojection
+        losses["loss_reflec"] = loss_reflec
+        losses["mask_mean"] = M0.mean()
         losses["loss"] = total_loss
-
 
         return losses
 
