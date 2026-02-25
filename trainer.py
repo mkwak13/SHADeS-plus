@@ -562,7 +562,11 @@ class Trainer:
             if self.epoch < 1:
                 reprojection_loss_item = photo
             else:
-                reprojection_loss_item = photo * (1 - 0.7 * M_soft)
+                spec_residual = torch.abs(raw - recon).detach()
+                spec_weight = spec_residual / (spec_residual.mean() + 1e-6)
+
+                reprojection_loss_item = photo * (1 - 0.7 * M_soft) \
+                                        + 0.1 * spec_weight * M_soft
 
 
             if self.opt.automasking:
