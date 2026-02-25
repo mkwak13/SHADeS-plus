@@ -545,7 +545,7 @@ class Trainer:
             # contrast-aware spec
             spec = torch.abs(
                 inputs[("color_aug", frame_id, 0)] -
-                outputs[("reflectance", 0, frame_id)].detach()
+                outputs[("reflectance", 0, frame_id)]
             )
 
             outputs[("specular_color", frame_id, 0)] = spec
@@ -620,8 +620,8 @@ class Trainer:
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
       
         # Direct specular suppression
-        # loss_spec_direct = outputs[("specular_color", 0, 0)].mean()
-        # total_loss += 0.5 * loss_spec_direct
+        loss_spec_direct = outputs[("specular_color", 0, 0)].mean()
+        total_loss += 0.05 * loss_spec_direct
 
         x0 = outputs[("specular_color", 0, 0)].mean(1, keepdim=True)
         M0 = torch.sigmoid((x0 - tau) * 15.0)
