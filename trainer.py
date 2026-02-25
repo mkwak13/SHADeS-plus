@@ -558,15 +558,14 @@ class Trainer:
             M_soft = outputs[("mask", 0, 0)]
 
             photo = self.compute_reprojection_loss(raw, pred)
-            # mask warmup to prevent convergence to 1
-            if self.epoch < 1:
-                reprojection_loss_item = photo
-            else:
-                spec_residual = torch.abs(raw - recon).detach()
-                spec_weight = spec_residual / (spec_residual.mean() + 1e-6)
 
-                reprojection_loss_item = photo * (1 - 0.7 * M_soft) \
-                                        + 0.1 * spec_weight * M_soft
+            photo_detached = photo.detach()
+
+            # make mask explain the residual
+            reprojection_loss_item = (
+                (1 - M_soft) * photo +
+                0.3 * M_soft * photo_detached
+)
 
 
             if self.opt.automasking:
