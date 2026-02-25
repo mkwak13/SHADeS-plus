@@ -559,12 +559,16 @@ class Trainer:
 
             photo = self.compute_reprojection_loss(raw, pred)
 
-            photo_detached = photo.detach()
+            mean = photo.mean(dim=(2,3), keepdim=True)
+            std = photo.std(dim=(2,3), keepdim=True) + 1e-6
+
+            photo_norm = (photo - mean) / std
+            photo_peak = torch.relu(photo_norm)
 
             # make mask explain the residual
             reprojection_loss_item = (
                 (1 - M_soft) * photo +
-                0.5 * M_soft * (photo_detached ** 2)
+                0.5 * M_soft * photo_peak.detach()
             )
 
 
@@ -617,7 +621,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.01 * loss_mask_l1 + 0.1 * loss_mask_tv
+        total_loss += 0.0075 * loss_mask_l1 + 0.1 * loss_mask_tv
 
         print(
             f"loss_reprojection: {loss_reprojection.item():.6f} | "
