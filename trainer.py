@@ -558,7 +558,7 @@ class Trainer:
             M_soft = outputs[("mask", 0, 0)]
 
             photo = self.compute_reprojection_loss(raw, pred)
-            #prevent mask from completely turning off photometric
+            #prevent mask from completely turning off photometric(prevents mask converging to 1)
             reprojection_loss_item = photo * (1 - 0.7 * M_soft)
 
 
@@ -611,7 +611,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.02 * loss_mask_l1 + 0.1 * loss_mask_tv
+        total_loss += 0.01 * loss_mask_l1 + 0.1 * loss_mask_tv
 
         print(
             f"loss_reprojection: {loss_reprojection.item():.6f} | "
