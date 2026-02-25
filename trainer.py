@@ -614,7 +614,7 @@ class Trainer:
         bright_prior = ((bright_values > 0.88) & (local_contrast > 0.05)).float()
 
         loss_mask_bright = ((M0 - bright_prior) ** 2).mean()
-        total_loss += 0.1 * loss_mask_bright
+        total_loss += 0.5 * loss_mask_bright
 
         loss_mask_reg = (M0 ** 2).mean()
         loss_mask_tv = (
@@ -622,7 +622,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.03 * loss_mask_reg + 0.1 * loss_mask_tv
+        total_loss += 0.005 * loss_mask_reg + 0.02 * loss_mask_tv
 
         print(
             f"loss_reprojection: {loss_reprojection.item():.6f} | "
