@@ -559,7 +559,7 @@ class Trainer:
 
             photo = self.compute_reprojection_loss(raw, pred)
 
-            reprojection_loss_item = photo / (1.0 + 2.0 * M_soft)
+            reprojection_loss_item = photo / (1.0 * M_soft)
 
             if self.opt.automasking:
                 identity_reprojection_loss_item = self.compute_reprojection_loss(inputs[("color", frame_id, 0)], inputs[("color", 0, 0)])
@@ -610,7 +610,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.0075 * loss_mask_reg + 0.1 * loss_mask_tv
+        total_loss += 0.05 * loss_mask_reg + 0.1 * loss_mask_tv
 
         print(
             f"loss_reprojection: {loss_reprojection.item():.6f} | "
