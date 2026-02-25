@@ -613,7 +613,7 @@ class Trainer:
 
         bright_values, _ = raw.max(1, keepdim=True)
 
-        bright_prior = ((bright_values > 0.95) & (contrast > 0.3)).float()
+        bright_prior = ((bright_values > 0.92) & (contrast > 0.15)).float()
 
         loss_mask_bright = ((M0 - bright_prior) ** 2).mean()
         total_loss += 0.1 * loss_mask_bright
