@@ -606,7 +606,7 @@ class Trainer:
         M0 = outputs[("mask", 0, 0)]
         raw = inputs[("color_aug", 0, 0)]
 
-        bright_prior = (raw.max(1, keepdim=True) > 0.90).float()
+        bright_prior = (raw.max(1, keepdim=True)[0] > 0.90).float()
 
         loss_mask_bright = ((M0 - bright_prior) ** 2).mean()
         total_loss += 0.1 * loss_mask_bright
@@ -617,7 +617,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.05 * loss_mask_reg + 0.1 * loss_mask_tv
+        total_loss += 0.03 * loss_mask_reg + 0.1 * loss_mask_tv
 
         print(
             f"loss_reprojection: {loss_reprojection.item():.6f} | "
