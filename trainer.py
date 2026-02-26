@@ -558,14 +558,11 @@ class Trainer:
             # ?? photometric
             photo = self.compute_reprojection_loss(raw, pred)
 
-            raw_ref = outputs[("reflectance", 0, 0)]
-            pred_ref = outputs[("reflectance_warp", 0, frame_id)]
-
-            photo_ref = self.compute_reprojection_loss(raw_ref, pred_ref)
-
             M_soft = outputs[("mask", 0, 0)]
 
-            photo = photo * (1.0 - 0.3 * M_soft) + photo_ref * (0.3 * M_soft)
+            photo = photo * (1.0 - 0.15 * M_soft)
+
+            reprojection_loss_item = photo
 
             if self.opt.automasking:
                 identity_reprojection_loss_item = self.compute_reprojection_loss(
@@ -595,6 +592,10 @@ class Trainer:
         mean_disp = disp.mean(2, True).mean(3, True)
         norm_disp = disp / (mean_disp + 1e-7)
         loss_disp_smooth = get_smooth_loss(norm_disp, color)
+
+        M_soft = outputs[("mask", 0, 0)]
+
+        loss_disp_smooth = loss_disp_smooth * (1.0 + 0.5 * M_soft.mean())
 
 
         if self.opt.disparity_spatial_constraint > 0:
