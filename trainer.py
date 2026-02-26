@@ -552,6 +552,12 @@ class Trainer:
             mask_comb = mask.clone()
             reflec_loss_item = torch.abs(outputs[("reflectance",0,0)] - outputs[("reflectance_warp", 0, frame_id)]).mean(1, True)
 
+            raw = inputs[("color_aug", 0, 0)]
+            pred = outputs[("reprojection_color_warp", 0, frame_id)]
+
+            # ?? photometric
+            photo = self.compute_reprojection_loss(raw, pred)
+
             raw_ref = outputs[("reflectance", 0, 0)]
             pred_ref = outputs[("reflectance_warp", 0, frame_id)]
 
