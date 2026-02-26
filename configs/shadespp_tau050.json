@@ -3,6 +3,7 @@
   "log_dir": "models/shadespp",
   "tau": 0.50,
   "decomp_recon_weight": 1.0,
+  "reflec_constraint": 0,
 
   "data_path": "datasets/C3VD/Dataset",
   "split": "c3vd",
