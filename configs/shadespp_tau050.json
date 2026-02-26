@@ -1,5 +1,5 @@
 {
-  "model_name": "v_tau015",
+  "model_name": "v_tau050",
   "log_dir": "models/shadespp",
   "tau": 0.50,
   "decomp_recon_weight": 1.0,
@@ -15,5 +15,5 @@
   "noadjust": true,
 
   "save_frequency": 1,
-  "num_epochs": 5
+  "num_epochs": 1
 }

@@ -559,8 +559,8 @@ class Trainer:
 
             photo = self.compute_reprojection_loss(raw, pred)
 
-            reprojection_loss_item = photo
-            #reprojection_loss_item = photo * (1.0 - M_soft)
+            M_soft = outputs[("mask", 0, 0)].detach()
+            reprojection_loss_item = photo * (1.0 - M_soft)
 
             if self.opt.automasking:
                 identity_reprojection_loss_item = self.compute_reprojection_loss(inputs[("color", frame_id, 0)], inputs[("color", 0, 0)])
