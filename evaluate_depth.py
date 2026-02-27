@@ -101,7 +101,11 @@ def evaluate(opt):
             )
 
 
-        encoder = networks.ResnetEncoder(opt.num_layers, False)
+        encoder = networks.ResnetEncoder(
+            opt.num_layers,
+            False,
+            num_input_images=2   # ? ?? ??
+        )
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, scales=range(4))
 
         model_dict = encoder.state_dict()
@@ -126,7 +130,11 @@ def evaluate(opt):
                     # Post-processed results require each image to have two forward passes
                     input_color = torch.cat((input_color, torch.flip(input_color, [3])), 0)
 
-                output = depth_decoder(encoder(input_color))
+                reflectance_dummy = torch.zeros_like(input_color)
+
+                depth_input = torch.cat([input_color, reflectance_dummy], dim=1)
+
+                output = depth_decoder(encoder(depth_input))
                 pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
 
