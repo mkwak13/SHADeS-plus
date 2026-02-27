@@ -604,6 +604,10 @@ class Trainer:
             lambda_spec = 0.3
             photo_aug = photo_raw + lambda_spec * specular_map
 
+            # ---- Specular alignment loss (?? ?) ----
+            spec_binary = (specular_map.detach() > 0).float()
+            loss_mask_align = torch.abs(M_soft - spec_binary).mean()
+            total_loss += 0.05 * loss_mask_align
 
             photo = photo_aug * (1.0 - M_soft)
 
