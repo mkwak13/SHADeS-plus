@@ -602,6 +602,14 @@ class Trainer:
                 (1.0 - M_soft)
             ).mean()
 
+            # contrast sharpening term
+            loss_mask_contrast = (
+                high_error_mask * (1.0 - M_soft) +
+                (1.0 - high_error_mask) * M_soft
+            ).mean()
+
+            loss_reflec += 0.5 * loss_mask_contrast
+
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
         mean_disp = disp.mean(2, True).mean(3, True)
