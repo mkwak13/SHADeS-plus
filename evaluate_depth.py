@@ -112,12 +112,34 @@ def evaluate(opt):
         encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
         depth_decoder.load_state_dict(torch.load(decoder_path))
 
+        decompose_encoder = networks.ResnetEncoder(
+            opt.num_layers,
+            False
+        )
+        decompose_decoder = networks.decompose_decoder(
+            decompose_encoder.num_ch_enc,
+            scales=range(4)
+        )
+
+        decompose_encoder.load_state_dict(
+            torch.load(os.path.join(opt.load_weights_folder, "decompose_encoder.pth"))
+        )
+        decompose_decoder.load_state_dict(
+            torch.load(os.path.join(opt.load_weights_folder, "decompose.pth"))
+        )
+
+        decompose_encoder.cuda()
+        decompose_encoder.eval()
+        decompose_decoder.cuda()
+        decompose_decoder.eval()
+
         encoder.cuda()
         encoder.eval()
         depth_decoder.cuda()
         depth_decoder.eval()
 
         pred_disps = []
+        pred_masks = []
 
         print("-> Computing predictions with size {}x{}".format(
             encoder_dict['width'], encoder_dict['height']))
@@ -130,13 +152,17 @@ def evaluate(opt):
                     # Post-processed results require each image to have two forward passes
                     input_color = torch.cat((input_color, torch.flip(input_color, [3])), 0)
 
-                reflectance_dummy = torch.zeros_like(input_color)
+                # ----- decompose forward -----
+                decompose_feat = decompose_encoder(input_color)
+                reflectance, light, mask_soft = decompose_decoder(decompose_feat)
 
-                depth_input = torch.cat([input_color, reflectance_dummy], dim=1)
+                depth_input = torch.cat([input_color, reflectance], dim=1)
 
                 output = depth_decoder(encoder(depth_input))
                 pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
+                mask_np = mask_soft.cpu()[:, 0].numpy()
+                pred_masks.append(mask_np)
 
                 if opt.post_process:
                     N = pred_disp.shape[0] // 2
@@ -145,6 +171,7 @@ def evaluate(opt):
                 pred_disps.append(pred_disp)
 
         pred_disps = np.concatenate(pred_disps)
+        pred_masks = np.concatenate(pred_masks)
 
     else:
         # Load predictions from file
@@ -168,7 +195,9 @@ def evaluate(opt):
 
     print("-> Mono evaluation - using median scaling")
 
-    errors = []
+    errors_all = []
+    errors_spec = []
+    errors_nonspec = []
     ratios = []
 
     save_dir = os.path.join(opt.load_weights_folder, "depth_predictions")
@@ -185,16 +214,21 @@ def evaluate(opt):
         pred_disp = cv2.resize(pred_disp, (gt_width, gt_height))
         pred_depth = 1/pred_disp
 
-        mask = np.logical_and(gt_depth > MIN_DEPTH, gt_depth < MAX_DEPTH)
-        
-        pred_depth_my=pred_depth
+        valid_mask = np.logical_and(gt_depth > MIN_DEPTH, gt_depth < MAX_DEPTH)
 
-        pred_depth = pred_depth[mask]
-        gt_depth = gt_depth[mask]
+        spec_mask = pred_masks[i]
+        spec_mask = cv2.resize(spec_mask, (gt_width, gt_height))
+        spec_mask = (spec_mask > 0.5)
+
+        spec_valid = np.logical_and(valid_mask, spec_mask)
+        nonspec_valid = np.logical_and(valid_mask, np.logical_not(spec_mask))
+
+        pred_depth_my = pred_depth.copy()
 
         pred_depth *= opt.pred_depth_scale_factor
+
         if not opt.disable_median_scaling:
-            ratio = np.median(gt_depth) / np.median(pred_depth)
+            ratio = np.median(gt_depth[valid_mask]) / np.median(pred_depth[valid_mask])
             ratios.append(ratio)
             pred_depth *= ratio
             pred_depth_my *= ratio
@@ -205,17 +239,49 @@ def evaluate(opt):
         pred_depth_my[pred_depth_my < MIN_DEPTH] = MIN_DEPTH
         pred_depth_my[pred_depth_my > MAX_DEPTH] = MAX_DEPTH
 
-        errors.append(compute_errors(gt_depth, pred_depth))
+        # Overall
+        errors_all.append(
+            compute_errors(
+                gt_depth[valid_mask],
+                pred_depth_my[valid_mask]
+            )
+        )
+
+        # Specular
+        if spec_valid.sum() > 50:
+            errors_spec.append(
+                compute_errors(
+                    gt_depth[spec_valid],
+                    pred_depth_my[spec_valid]
+                )
+            )
+
+        # Non-specular
+        if nonspec_valid.sum() > 50:
+            errors_nonspec.append(
+                compute_errors(
+                    gt_depth[nonspec_valid],
+                    pred_depth_my[nonspec_valid]
+                )
+            )
 
     if not opt.disable_median_scaling:
         ratios = np.array(ratios)
         med = np.median(ratios)
         print(" Scaling ratios | med: {:0.3f} | std: {:0.3f}".format(med, np.std(ratios / med)))
 
-    mean_errors = np.array(errors).mean(0)
+    mean_all = np.array(errors_all).mean(0)
+    mean_spec = np.array(errors_spec).mean(0)
+    mean_nonspec = np.array(errors_nonspec).mean(0)
 
-    print("\n  " + ("{:>8} | " * 8).format("abs_diff","abs_rel", "sq_rel", "rmse", "rmse_log", "a1", "a2", "a3"))
-    print(("&{: 8.3f}  " * 8).format(*mean_errors.tolist()) + "\\\\")
+    print("\n===== Overall =====")
+    print(("&{: 8.3f}  " * 8).format(*mean_all.tolist()) + "\\\\")
+
+    print("\n===== Specular =====")
+    print(("&{: 8.3f}  " * 8).format(*mean_spec.tolist()) + "\\\\")
+
+    print("\n===== Non-Specular =====")
+    print(("&{: 8.3f}  " * 8).format(*mean_nonspec.tolist()) + "\\\\")
     print("\n-> Done!")
 
 
