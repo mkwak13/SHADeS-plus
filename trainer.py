@@ -570,17 +570,19 @@ class Trainer:
 
             # ?? photometric
             photo_raw = self.compute_reprojection_loss(raw, pred)
+            if "photo_raw_vis" not in outputs:
+                outputs["photo_raw_vis"] = photo_raw.detach()
 
-            # if self.opt.automasking:
-            #     identity_reprojection_loss_item = self.compute_reprojection_loss(
-            #         inputs[("color", frame_id, 0)],
-            #         inputs[("color", 0, 0)]
-            #     )
-            #     identity_reprojection_loss_item += torch.randn_like(identity_reprojection_loss_item) * 1e-5
+            if self.opt.automasking:
+                identity_reprojection_loss_item = self.compute_reprojection_loss(
+                    inputs[("color", frame_id, 0)],
+                    inputs[("color", 0, 0)]
+                )
+                identity_reprojection_loss_item += torch.randn_like(identity_reprojection_loss_item) * 1e-5
 
-            #     mask_idt = (photo_raw < identity_reprojection_loss_item).float()
-            #     mask_comb = mask * mask_idt
-            #     outputs["identity_selection"] = mask_comb.clone()
+                mask_idt = (photo_raw < identity_reprojection_loss_item).float()
+                mask_comb = mask * mask_idt
+                outputs["identity_selection"] = mask_comb.clone()
 
             M_soft = outputs[("mask", 0, 0)]
 
@@ -708,10 +710,16 @@ class Trainer:
                     writer.add_image(
                             "light_adjust_warped/{}".format(j),
                             outputs[("light_adjust_warp", 0, 1)][j].data, self.step)
-                if self.opt.automasking and "identity_selection" in outputs:
+                if self.opt.automasking:
                     writer.add_image(
-                        "automask/{}".format(j),
-                        outputs["identity_selection"][j].data, self.step)
+                            "automask/{}".format(j),
+                            outputs["identity_selection"][j].data, self.step)
+                if "photo_raw_vis" in outputs:
+                    writer.add_image(
+                        "photo_raw/{}".format(j),
+                        outputs["photo_raw_vis"][j].data,
+                        self.step
+                    )
 
 
     def save_opts(self):
