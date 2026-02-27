@@ -542,6 +542,7 @@ class Trainer:
         loss_reprojection = 0
         loss_disp_smooth = 0
         loss_decomp_recon = 0
+        loss_mask_align_total = 0
         tau = self.opt.tau
         inpaint = "inpaint_" if self.opt.inpaint_pseudo_gt_dir is not None else ""
 
@@ -609,7 +610,7 @@ class Trainer:
                 M_soft,
                 spec_binary
             )
-            total_loss += 0.1 * loss_mask_align
+            loss_mask_align_total += loss_mask_align
 
             loss_reprojection += (photo * mask_comb).mean()
 
@@ -635,6 +636,8 @@ class Trainer:
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
         
         total_loss += self.opt.decomp_recon_weight * (loss_decomp_recon / len(self.opt.frame_ids))
+
+        total_loss += 0.1 * loss_mask_align_total
 
         loss_light_smooth = get_smooth_loss(
             outputs[("light", 0, 0)],
