@@ -708,10 +708,10 @@ class Trainer:
                     writer.add_image(
                             "light_adjust_warped/{}".format(j),
                             outputs[("light_adjust_warp", 0, 1)][j].data, self.step)
-                if self.opt.automasking:
+                if self.opt.automasking and "identity_selection" in outputs:
                     writer.add_image(
-                            "automask/{}".format(j),
-                            outputs["identity_selection"][j].data, self.step)
+                        "automask/{}".format(j),
+                        outputs["identity_selection"][j].data, self.step)
 
 
     def save_opts(self):
