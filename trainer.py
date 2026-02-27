@@ -602,15 +602,16 @@ class Trainer:
 
             outputs["specular_vis"] = specular_map.detach()
 
-            photo = photo_raw * (1.0 - M_soft)
-
             # ---- Specular alignment loss (?? ?) ----
             spec_binary = (specular_map.detach() > 0).float()
             # specular ????? mask? ????
-            loss_mask_align = - (M_soft * spec_binary).mean()
+            loss_mask_align = torch.nn.functional.binary_cross_entropy(
+                M_soft,
+                spec_binary
+            )
             loss_mask_align_total += loss_mask_align
 
-            loss_reprojection += (photo * mask_comb).mean()
+            loss_reprojection += (photo_raw * mask_comb).mean()
 
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
@@ -635,7 +636,7 @@ class Trainer:
         
         total_loss += self.opt.decomp_recon_weight * (loss_decomp_recon / len(self.opt.frame_ids))
 
-        total_loss += 0.02 * loss_mask_align_total
+        total_loss += 0.2 * loss_mask_align_total
 
         loss_light_smooth = get_smooth_loss(
             outputs[("light", 0, 0)],
