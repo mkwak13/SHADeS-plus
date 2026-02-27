@@ -565,7 +565,8 @@ class Trainer:
             mask_comb = mask.clone()
 
             raw = inputs[("color_aug", 0, 0)]
-            pred = outputs[("reprojection_color_warp", 0, frame_id)]
+            #pred = outputs[("reprojection_color_warp", 0, frame_id)]
+            pred = outputs[("color_warp", 0, frame_id)]
 
             # ?? photometric
             photo = self.compute_reprojection_loss(raw, pred)
