@@ -629,9 +629,6 @@ class Trainer:
 
         print("mask_mean:", M0.mean().item())
 
-        loss_mask_area = M0.mean()
-        total_loss += 0.003 * loss_mask_area
-
         loss_mask_reg = (M0 ** 2).mean()
 
         loss_mask_tv = (
@@ -639,7 +636,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.01 * loss_mask_reg + 0.02 * loss_mask_tv
+        total_loss += 0.002 * loss_mask_reg + 0.01 * loss_mask_tv
         losses["loss"] = total_loss
 
         return losses
