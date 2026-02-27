@@ -587,14 +587,15 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            raw = inputs[("color_aug", 0, 0)]
+            raw0 = inputs[("color_aug", 0, 0)]
+            recon0 = outputs[("reflectance", 0, 0)] * outputs[("light", 0, 0)]
 
-            spec_gate = torch.clamp((reflec_loss_item - 0.05) * 20.0, 0.0, 1.0)
+            recon_error = torch.abs(raw0 - recon0).mean(1, True)
 
             loss_reflec += (
-                reflec_loss_item *
+                recon_error *
                 mask_comb *
-                (1.0 - M_soft * spec_gate)
+                (1.0 - M_soft)
             ).mean()
 
             loss_reprojection += (
