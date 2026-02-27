@@ -425,15 +425,42 @@ class Trainer:
             # 1. diffuse reflectance
             reflectance_diffuse = reflectance * (1 - mask)
 
-            # 2. blur? reflectance ??
-            reflectance_blur = F.avg_pool2d(reflectance, kernel_size=11, stride=1, padding=5)
+            # -------------------------------
+            # 1. diffuse reflectance
+            # -------------------------------
+            R = reflectance
+            M = mask
 
-            # 3. mask ??? blur ??? ???
-            reflectance_filled = reflectance_diffuse + reflectance_blur * mask
+            R_valid = R * (1 - M)
 
+            # -------------------------------
+            # 2. masked local averaging (diffuse-only)
+            # -------------------------------
+            kernel = 11
+            pad = kernel // 2
+
+            valid_pixels = (1 - M)
+
+            # ?? valid pixel ??
+            valid_count = F.avg_pool2d(valid_pixels, kernel_size=kernel, stride=1, padding=pad)
+
+            # ?? diffuse ?
+            R_sum = F.avg_pool2d(R_valid, kernel_size=kernel, stride=1, padding=pad)
+
+            # diffuse ?? (specular ??)
+            R_mean = R_sum / (valid_count + 1e-6)
+
+            # -------------------------------
+            # 3. mask ??? diffuse ???? ???
+            # -------------------------------
+            reflectance_filled = R * (1 - M) + R_mean * M
+
+            # -------------------------------
+            # 4. outputs
+            # -------------------------------
             outputs[("reflectance", 0, f_i)] = reflectance_filled
             outputs[("light", 0, f_i)] = light
-            outputs[("mask", 0, f_i)] = mask
+            outputs[("mask", 0, f_i)] = M
 
             outputs[("reprojection_color", 0, f_i)] = reflectance_filled * light
             outputs[("specular_removed", 0, f_i)] = reflectance_filled * light
