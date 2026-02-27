@@ -587,12 +587,12 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            spec_weight = torch.clamp(reflec_loss_item * 5.0, 0.0, 1.0)
+            spec_weight = (reflec_loss_item > 0.05).float()
 
             loss_reflec += (
                 reflec_loss_item *
                 mask_comb *
-                (1.0 + 4.0 * M_soft * spec_weight)
+                (1.0 + 2.0 * M_soft * spec_weight)
             ).mean()
 
             loss_reprojection += (
