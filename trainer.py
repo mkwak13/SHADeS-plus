@@ -611,7 +611,8 @@ class Trainer:
             )
             loss_mask_align_total += loss_mask_align
 
-            loss_reprojection += (photo_raw * mask_comb).mean()
+            photo = photo_raw * (1.0 - M_soft.detach())
+            loss_reprojection += (photo * mask_comb).mean()
 
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
