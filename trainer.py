@@ -434,6 +434,9 @@ class Trainer:
 
             outputs[("reprojection_color", 0, f_i)] = reflectance_diffuse * light + specular
 
+            # specular removed final image
+            outputs[("specular_removed", 0, f_i)] = reflectance_diffuse * light
+
     def decompose_postprocess(self,inputs,outputs):
         disp = outputs[("disp", 0)]
         disp = F.interpolate(disp, [self.opt.height, self.opt.width], mode="bilinear", align_corners=True)
@@ -726,6 +729,9 @@ class Trainer:
                 writer.add_image(
                         "AS_reprojection/{}".format(j),
                         outputs[("reprojection_color", 0, 0)][j].data, self.step)
+                writer.add_image(
+                    "specular_removed/{}".format(j),
+                    outputs[("specular_removed", 0, 0)][j].data, self.step)
                 writer.add_image(
                     "mask/{}".format(j),
                     outputs[("mask", 0, 0)][j].data, self.step)
