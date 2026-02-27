@@ -101,10 +101,16 @@ def evaluate(opt):
             )
 
 
+        # baseline?? 1, SHADeS++?? 2
+        if "pseudo" in opt.load_weights_folder or "shadespp" in opt.load_weights_folder:
+            num_in = 2
+        else:
+            num_in = 1
+
         encoder = networks.ResnetEncoder(
             opt.num_layers,
             False,
-            num_input_images=2   # ? ?? ??
+            num_input_images=num_in
         )
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, scales=range(4))
 
@@ -153,10 +159,13 @@ def evaluate(opt):
                     input_color = torch.cat((input_color, torch.flip(input_color, [3])), 0)
 
                 # ----- decompose forward -----
-                decompose_feat = decompose_encoder(input_color)
-                reflectance, light, mask_soft = decompose_decoder(decompose_feat)
-
-                depth_input = torch.cat([input_color, reflectance], dim=1)
+                if num_in == 2:
+                    decompose_feat = decompose_encoder(input_color)
+                    reflectance, light, mask_soft = decompose_decoder(decompose_feat)
+                    depth_input = torch.cat([input_color, reflectance], dim=1)
+                else:
+                    mask_soft = torch.zeros_like(input_color[:, :1])
+                    depth_input = input_color
 
                 output = depth_decoder(encoder(depth_input))
                 pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
