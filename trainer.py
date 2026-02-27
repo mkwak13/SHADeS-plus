@@ -586,7 +586,15 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            photo = photo_raw * (1.0 - M_soft)
+            # ---- Specular brightness prior ----
+            brightness = raw.mean(1, keepdim=True)          # (B,1,H,W)
+            brightness = brightness / (brightness.mean() + 1e-6)
+
+            lambda_spec = 0.3  # ???
+
+            photo_aug = photo_raw + lambda_spec * brightness
+
+            photo = photo_aug * (1.0 - M_soft)
 
             loss_reprojection += (photo * mask_comb).mean()
 
