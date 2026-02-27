@@ -626,6 +626,8 @@ class Trainer:
 
         M0 = outputs[("mask", 0, 0)]
 
+        print("mask_mean:", M0.mean().item())
+
         loss_mask_reg = (M0 ** 2).mean()
 
         loss_mask_tv = (
