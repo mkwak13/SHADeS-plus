@@ -422,38 +422,21 @@ class Trainer:
 
             reflectance, light, mask = self.models["decompose"](decompose_features)
 
-            # 1. diffuse reflectance
-            reflectance = reflectance * (1 - mask)
+            # diffuse-only reflectance
+            reflectance_diffuse = reflectance * (1 - mask)
 
-            # -------------------------------
-            # 1. diffuse reflectance
-            # -------------------------------
-            R = reflectance
-            M = mask
+            # specular component
+            specular = light * mask
 
-            # 1. specular ??? diffuse? ??
-            R_diff = R * (1 - M)
-
-            kernel = 15
-            pad = kernel // 2
-
-            # 2. diffuse??? ?? ??
-            valid_pixels = (1 - M)
-
-            valid_count = F.avg_pool2d(valid_pixels, kernel, 1, pad)
-            R_sum = F.avg_pool2d(R_diff, kernel, 1, pad)
-
-            R_mean = R_sum / (valid_count + 1e-6)
-
-            # 3. mask ??? diffuse ???? ??
-            reflectance_filled = R_diff + R_mean * M
-
-            outputs[("reflectance", 0, f_i)] = reflectance_filled
+            outputs[("reflectance", 0, f_i)] = reflectance_diffuse
             outputs[("light", 0, f_i)] = light
-            outputs[("mask", 0, f_i)] = M
+            outputs[("mask", 0, f_i)] = mask
 
-            outputs[("reprojection_color", 0, f_i)] = reflectance_filled * light
-            outputs[("specular_removed", 0, f_i)] = reflectance_filled * light
+            # reconstruction (???)
+            outputs[("reprojection_color", 0, f_i)] = reflectance_diffuse * light + specular
+
+            # specular removed (????)
+            outputs[("specular_removed", 0, f_i)] = reflectance_diffuse * light
 
     def decompose_postprocess(self,inputs,outputs):
         disp = outputs[("disp", 0)]
