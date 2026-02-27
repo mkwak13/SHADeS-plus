@@ -602,13 +602,11 @@ class Trainer:
                 (1.0 - M_soft)
             ).mean()
 
-            # contrast sharpening term
-            loss_mask_contrast = (
-                high_error_mask * (1.0 - M_soft) +
-                (1.0 - high_error_mask) * M_soft
-            ).mean()
+            soft_target = (recon_error / (recon_error.max().detach() + 1e-6)).detach()
 
-            loss_reflec += 0.5 * loss_mask_contrast
+            loss_mask_align = torch.abs(M_soft - soft_target).mean()
+
+            loss_reflec += 0.1 * loss_mask_align
 
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
