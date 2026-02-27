@@ -599,7 +599,7 @@ class Trainer:
 
             photo_aug = photo_raw + lambda_spec * brightness_centered
 
-            photo = photo_aug * (1.0 - M_soft)
+            photo = photo_aug * (M_soft)
 
             loss_reprojection += (photo * mask_comb).mean()
 
@@ -610,7 +610,7 @@ class Trainer:
 
         M_soft = outputs[("mask", 0, 0)]
 
-        smooth_weight = (1.0 - M_soft)
+        smooth_weight = (M_soft)
         smooth_loss_map = get_smooth_loss(norm_disp, color)
         loss_disp_smooth = (smooth_loss_map * smooth_weight).mean()
 
