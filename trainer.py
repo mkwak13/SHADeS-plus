@@ -571,8 +571,7 @@ class Trainer:
 
             # ?? photometric
             photo_raw = self.compute_reprojection_loss(raw, pred)
-            if "photo_raw_vis" not in outputs:
-                outputs["photo_raw_vis"] = photo_raw.detach()
+            outputs["photo_raw_vis"] = photo_raw.detach()
 
             # if self.opt.automasking:
             #     identity_reprojection_loss_item = self.compute_reprojection_loss(
@@ -611,7 +610,10 @@ class Trainer:
             )
             loss_mask_align_total += loss_mask_align
 
-            photo = photo_raw * (1.0 - M_soft.detach())
+            photo = photo_raw * (1.0 - M_soft.detach()) ** 2
+
+            outputs["photo_after_mask_vis"] = photo.detach()
+
             loss_reprojection += (photo * mask_comb).mean()
 
         disp = outputs[("disp", 0)]
