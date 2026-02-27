@@ -587,7 +587,12 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            spec_weight = (reflec_loss_item > 0.05).float()
+            raw = inputs[("color_aug", 0, 0)]
+            brightness = raw.mean(1, keepdim=True)
+
+            bright_mask = (brightness > 0.6).float()
+
+            spec_weight = bright_mask * (reflec_loss_item > 0.05).float()
 
             loss_reflec += (
                 reflec_loss_item *
