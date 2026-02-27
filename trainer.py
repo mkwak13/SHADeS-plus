@@ -423,7 +423,7 @@ class Trainer:
             reflectance, light, mask = self.models["decompose"](decompose_features)
 
             # 1. diffuse reflectance
-            reflectance_diffuse = reflectance * (1 - mask)
+            reflectance = reflectance * (1 - mask)
 
             # -------------------------------
             # 1. diffuse reflectance
@@ -431,33 +431,23 @@ class Trainer:
             R = reflectance
             M = mask
 
-            R_valid = R * (1 - M)
+            # 1. specular ??? diffuse? ??
+            R_diff = R * (1 - M)
 
-            # -------------------------------
-            # 2. masked local averaging (diffuse-only)
-            # -------------------------------
-            kernel = 11
+            kernel = 15
             pad = kernel // 2
 
+            # 2. diffuse??? ?? ??
             valid_pixels = (1 - M)
 
-            # ?? valid pixel ??
-            valid_count = F.avg_pool2d(valid_pixels, kernel_size=kernel, stride=1, padding=pad)
+            valid_count = F.avg_pool2d(valid_pixels, kernel, 1, pad)
+            R_sum = F.avg_pool2d(R_diff, kernel, 1, pad)
 
-            # ?? diffuse ?
-            R_sum = F.avg_pool2d(R_valid, kernel_size=kernel, stride=1, padding=pad)
-
-            # diffuse ?? (specular ??)
             R_mean = R_sum / (valid_count + 1e-6)
 
-            # -------------------------------
-            # 3. mask ??? diffuse ???? ???
-            # -------------------------------
-            reflectance_filled = R * (1 - M) + R_mean * M
+            # 3. mask ??? diffuse ???? ??
+            reflectance_filled = R_diff + R_mean * M
 
-            # -------------------------------
-            # 4. outputs
-            # -------------------------------
             outputs[("reflectance", 0, f_i)] = reflectance_filled
             outputs[("light", 0, f_i)] = light
             outputs[("mask", 0, f_i)] = M
