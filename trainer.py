@@ -434,8 +434,19 @@ class Trainer:
 
             outputs[("reprojection_color", 0, f_i)] = reflectance_diffuse * light + specular
 
-            # specular removed final image
-            outputs[("specular_removed", 0, f_i)] = reflectance_diffuse * light
+            # ---- Specular fill for visualization ----
+
+            # ?? diffuse ??? ??? ?? blur
+            reflectance_blur = F.avg_pool2d(reflectance, 7, stride=1, padding=3)
+
+            # mask ??? blur ??? ??
+            reflectance_filled = reflectance * (1 - mask) + reflectance_blur * mask
+
+            # ?? specular ?? ???
+            specular_removed = reflectance_filled * light
+
+            outputs[("specular_removed", 0, f_i)] = specular_removed
+
 
     def decompose_postprocess(self,inputs,outputs):
         disp = outputs[("disp", 0)]
