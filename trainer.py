@@ -597,9 +597,8 @@ class Trainer:
 
             loss_reflec += (
                 recon_error *
-                high_error_mask *
                 mask_comb *
-                (1.0 - M_soft)
+                (1.0 + 2.0 * (1.0 - M_soft) * high_error_mask)
             ).mean()
 
             soft_target = (recon_error / (recon_error.max().detach() + 1e-6)).detach()
