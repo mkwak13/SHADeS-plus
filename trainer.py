@@ -568,7 +568,7 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            photo = photo * (1.0 - 0.5 * M_soft.detach())
+            photo = photo * (1.0 - 0.3 * M_soft)
 
             reprojection_loss_item = photo
 
@@ -588,7 +588,7 @@ class Trainer:
             M_soft = outputs[("mask", 0, 0)]
 
             loss_reflec += (
-                reflec_loss_item * mask_comb * (1.0 + 2.0 * M_soft)
+                reflec_loss_item * mask_comb * (1.0 + 1.0 * M_soft)
             ).mean()
 
             loss_reprojection += (
@@ -630,7 +630,7 @@ class Trainer:
         print("mask_mean:", M0.mean().item())
 
         loss_mask_area = M0.mean()
-        total_loss += 0.01 * loss_mask_area
+        total_loss += 0.003 * loss_mask_area
 
         loss_mask_reg = (M0 ** 2).mean()
 
