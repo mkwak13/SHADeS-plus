@@ -592,14 +592,14 @@ class Trainer:
 
             recon_error = torch.abs(raw0 - recon0).mean(1, True)
 
+            threshold = torch.quantile(recon_error.detach(), 0.85)
+            high_error_mask = (recon_error > threshold).float()
+
             loss_reflec += (
                 recon_error *
+                high_error_mask *
                 mask_comb *
                 (1.0 - M_soft)
-            ).mean()
-
-            loss_reprojection += (
-                reprojection_loss_item * mask_comb
             ).mean()
 
         disp = outputs[("disp", 0)]
