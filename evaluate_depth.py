@@ -306,6 +306,7 @@ def evaluate(opt):
         print(("&{: 8.3f}  " * 8).format(*mean_nonspec.tolist()) + "\\\\")
     else:
         print("No non-specular pixels detected")
+        
     print("\n-> Done!")
 
 
