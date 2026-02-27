@@ -539,7 +539,6 @@ class Trainer:
 
         losses = {}
         total_loss = 0
-        loss_reflec = 0
         loss_reprojection = 0
         loss_disp_smooth = 0
         loss_decomp_recon = 0
@@ -564,7 +563,6 @@ class Trainer:
         for frame_id in self.opt.frame_ids[1:]: 
             mask = outputs[("valid_mask", 0, frame_id)]
             mask_comb = mask.clone()
-            reflec_loss_item = torch.abs(outputs[("reflectance",0,0)] - outputs[("reflectance_warp", 0, frame_id)]).mean(1, True)
 
             raw = inputs[("color_aug", 0, 0)]
             pred = outputs[("reprojection_color_warp", 0, frame_id)]
@@ -597,26 +595,6 @@ class Trainer:
 
             M_soft = outputs[("mask", 0, 0)]
 
-            raw0 = inputs[("color_aug", 0, 0)]
-            recon0 = outputs[("reflectance", 0, 0)] * outputs[("light", 0, 0)]
-
-            recon_error = torch.abs(raw0 - recon0).mean(1, True)
-
-            threshold = torch.quantile(recon_error.detach(), 0.85)
-            high_error_mask = (recon_error > threshold).float()
-
-            loss_reflec += (
-                recon_error *
-                mask_comb *
-                (1.0 + 2.0 * (1.0 - M_soft) * high_error_mask)
-            ).mean()
-
-            soft_target = (recon_error / (recon_error.max().detach() + 1e-6)).detach()
-
-            loss_mask_align = torch.abs(M_soft - soft_target).mean()
-
-            loss_reflec += 0.1 * loss_mask_align
-
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
         mean_disp = disp.mean(2, True).mean(3, True)
@@ -635,7 +613,6 @@ class Trainer:
             loss_disp_spatial = 0
 
         total_loss = (self.opt.reprojection_constraint*loss_reprojection / 2.0 + 
-                      self.opt.reflec_constraint*(loss_reflec / 2.0) + 
                       self.opt.disparity_smoothness*loss_disp_smooth + 
                       self.opt.disparity_spatial_constraint*loss_disp_spatial)
         
@@ -658,7 +635,7 @@ class Trainer:
             torch.abs(M0[:, :, :-1, :] - M0[:, :, 1:, :]).mean()
         )
 
-        total_loss += 0.002 * loss_mask_reg + 0.01 * loss_mask_tv
+        total_loss += 0.001 * loss_mask_reg + 0.005 * loss_mask_tv
         losses["loss"] = total_loss
 
         return losses
