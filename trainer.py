@@ -619,8 +619,6 @@ class Trainer:
 
             outputs["photo_after_mask_vis"] = photo.detach()
 
-            loss_reprojection += (photo * mask_comb).mean()
-
         disp = outputs[("disp", 0)]
         color = inputs[("color_aug", 0, 0)]
         mean_disp = disp.mean(2, True).mean(3, True)
