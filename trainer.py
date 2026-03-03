@@ -554,34 +554,39 @@ class Trainer:
         for frame_id in self.opt.frame_ids:
 
             raw = inputs[("color_aug", frame_id, 0)]
+            pred = outputs[("reprojection_color", 0, frame_id)]
 
             recon = (
                 outputs[("reflectance", 0, frame_id)] *
                 outputs[("light", 0, frame_id)]
             )
+
             loss_decomp_recon += torch.abs(raw - recon).mean()
+
+
 
         for frame_id in self.opt.frame_ids[1:]: 
             mask = outputs[("valid_mask", 0, frame_id)]
             mask_comb = mask.clone()
 
-            raw = inputs[("color_aug", 0, 0)]
-            pred = outputs[("reprojection_color_warp", 0, frame_id)]
+            raw = inputs[("color", 0, 0)]
+            #pred = outputs[("reprojection_color_warp", 0, frame_id)]
+            pred = outputs[("color_warp", 0, frame_id)]
 
             # ?? photometric
             photo_raw = self.compute_reprojection_loss(raw, pred)
             outputs["photo_raw_vis"] = photo_raw.detach()
 
-            # if self.opt.automasking:
-            #     identity_reprojection_loss_item = self.compute_reprojection_loss(
-            #         inputs[("color", frame_id, 0)],
-            #         inputs[("color", 0, 0)]
-            #     )
-            #     identity_reprojection_loss_item += torch.randn_like(identity_reprojection_loss_item) * 1e-5
+            if self.opt.automasking:
+                identity_reprojection_loss_item = self.compute_reprojection_loss(
+                    inputs[("color", frame_id, 0)],
+                    inputs[("color", 0, 0)]
+                )
+                identity_reprojection_loss_item += torch.randn_like(identity_reprojection_loss_item) * 1e-5
 
-            #     mask_idt = (photo_raw < identity_reprojection_loss_item).float()
-            #     mask_comb = mask * mask_idt
-            #     outputs["identity_selection"] = mask_comb.clone()
+                mask_idt = (photo_raw < identity_reprojection_loss_item).float()
+                mask_comb = mask * mask_idt
+                outputs["identity_selection"] = mask_comb.clone()
 
             M_soft = outputs[("mask", 0, 0)]
 
