@@ -570,8 +570,8 @@ class Trainer:
             mask_comb = mask.clone()
 
             raw = inputs[("color", 0, 0)]
-            #pred = outputs[("reprojection_color_warp", 0, frame_id)]
-            pred = outputs[("color_warp", 0, frame_id)]
+            pred = outputs[("reprojection_color_warp", 0, frame_id)]
+            #pred = outputs[("color_warp", 0, frame_id)]
 
             # ?? photometric
             photo_raw = self.compute_reprojection_loss(raw, pred)
@@ -651,8 +651,6 @@ class Trainer:
         total_loss += 0.05 * loss_light_smooth
 
         M0 = outputs[("mask", 0, 0)]
-
-        print("mask_mean:", M0.mean().item())
 
         loss_mask_reg = 0
 
