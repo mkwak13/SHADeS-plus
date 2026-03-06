@@ -103,7 +103,7 @@ def evaluate(opt):
 
         # baseline?? 1, SHADeS++?? 2
         if "shadespp" in opt.load_weights_folder.lower():
-            num_in = 2
+            num_in = 3
         else:
             num_in = 1
 
