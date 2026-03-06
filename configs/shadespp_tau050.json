@@ -13,7 +13,7 @@
   "width": 288,
   "png": true,
 
-  "automasking": false,
+  "automasking": true,
   "noadjust": true,
 
   "save_frequency": 1,
