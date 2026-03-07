@@ -372,6 +372,8 @@ class Trainer:
             input_color = inputs[("color_aug", 0, 0)]
             reflectance = outputs[("reflectance", 0, 0)]
             mask = outputs[("mask", 0, 0)]
+            if mask.dim() == 3:
+                mask = mask.unsqueeze(1)
 
             depth_input = torch.cat([input_color, reflectance, mask], dim=1)
 
@@ -402,7 +404,7 @@ class Trainer:
                     if f_i < 0:
                         inputs_all = [pose_feats[f_i], pose_feats[0]]
                     else:
-                        inputs_all = [pose_feats[0], pose_feats[f_i]]                                                                    
+                        inputs_all = [pose_feats[0], pose_feats[f_i]]
 
                     # pose
                     pose_inputs = [self.models["pose_encoder"](torch.cat(inputs_all, 1))]
