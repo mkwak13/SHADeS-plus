@@ -55,6 +55,9 @@ class Trainer:
             self.opt.weights_init == "pretrained",
             num_input_images=2   # ? ??
         )
+        self.models["encoder"].encoder.conv1 = torch.nn.Conv2d(
+            7, 64, kernel_size=7, stride=2, padding=3, bias=False
+        ).to(self.device)
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
