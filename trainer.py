@@ -371,6 +371,7 @@ class Trainer:
         else:
             input_color = inputs[("color_aug", 0, 0)]
             reflectance = outputs[("reflectance", 0, 0)]
+            mask = outputs[("mask", 0, 0)]
 
             depth_input = torch.cat([input_color, reflectance, mask], dim=1)
 
