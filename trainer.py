@@ -381,19 +381,6 @@ class Trainer:
             features = self.models["encoder"](depth_input)
         outputs.update(self.models["depth"](features))
 
-        disp = outputs[("disp", 0)]
-        M_soft = outputs[("mask", 0, 0)]
-
-        M_soft = F.interpolate(M_soft, size=disp.shape[2:], mode="bilinear", align_corners=False)
-
-        spec_mask = (M_soft > 0.3).float()
-
-        disp_mean = F.avg_pool2d(disp, kernel_size=5, stride=1, padding=2)
-
-        disp_clean = disp * (1 - spec_mask) + disp_mean * spec_mask
-
-        outputs[("disp", 0)] = disp_clean
-
         # pose
         outputs.update(self.predict_poses(inputs))
 
@@ -442,6 +429,12 @@ class Trainer:
 
             # diffuse-only reflectance
             reflectance_diffuse = reflectance * (1 - mask)
+
+            # simple inpainting
+            kernel = 7
+            reflectance_blur = F.avg_pool2d(reflectance_diffuse, kernel, stride=1, padding=kernel//2)
+
+            reflectance_diffuse = reflectance_diffuse + mask * reflectance_blur
 
             # specular component
             specular = light * mask
