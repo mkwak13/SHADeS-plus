@@ -431,10 +431,10 @@ class Trainer:
             reflectance_diffuse = reflectance * (1 - mask)
 
             # simple inpainting
-            kernel = 7
-            reflectance_blur = F.avg_pool2d(reflectance_diffuse, kernel, stride=1, padding=kernel//2)
+            kernel = 11
+            color_blur = F.avg_pool2d(inputs[("color_aug", f_i, 0)], kernel, stride=1, padding=kernel//2)
 
-            reflectance_diffuse = reflectance_diffuse + mask * reflectance_blur
+            reflectance_diffuse = reflectance_diffuse + mask * color_blur
 
             # specular component
             specular = light * mask
@@ -582,9 +582,8 @@ class Trainer:
             mask = outputs[("valid_mask", 0, frame_id)]
             mask_comb = mask.clone()
 
-            raw = inputs[("color", 0, 0)]
+            raw = outputs[("specular_removed", 0, 0)]
             pred = outputs[("reprojection_color_warp", 0, frame_id)]
-            #pred = outputs[("color_warp", 0, frame_id)]
 
             # ?? photometric
             photo_raw = self.compute_reprojection_loss(raw, pred)
