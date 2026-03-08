@@ -376,9 +376,11 @@ class Trainer:
             reflectance = outputs[("reflectance", 0, 0)]
             mask = outputs[("mask", 0, 0)]
 
-            # attach specular-reduced reconstruction inside mask regions
-            recon = reflectance * outputs[("light", 0, 0)]
-            filtered = input_color * (1 - mask) + recon * mask
+            # remove specular by replacing masked pixels with local average
+            non_spec = input_color * (1 - mask)
+            kernel = 7
+            neigh = F.avg_pool2d(non_spec, kernel, stride=1, padding=kernel//2)
+            filtered = input_color * (1 - mask) + neigh * mask
             # for debugging: keep filtered image so we can log it
             outputs[("filtered", 0, 0)] = filtered
 
