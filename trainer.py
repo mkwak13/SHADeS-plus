@@ -387,6 +387,15 @@ class Trainer:
             refl_non_spec = reflectance * (1 - mask)
             sum_refl = F.avg_pool2d(refl_non_spec, kernel, stride=1, padding=padding) * (kernel**2)
             neigh_refl = sum_refl / (count + 1e-6)
+
+            # also compute average color neighbours for luminance reference
+            neigh_color = sum_non / (count + 1e-6)
+            luma_weights = torch.tensor([0.299, 0.587, 0.114], device=input_color.device).view(1, 3, 1, 1)
+            luma_color = (neigh_color * luma_weights).sum(dim=1, keepdim=True)
+            luma_refl = (neigh_refl * luma_weights).sum(dim=1, keepdim=True)
+            ratio = luma_color / (luma_refl + 1e-6)
+            neigh_refl = neigh_refl * ratio
+
             filtered = input_color * (1 - mask) + neigh_refl * mask
             outputs[("filtered", 0, 0)] = filtered
 
