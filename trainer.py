@@ -376,10 +376,15 @@ class Trainer:
             reflectance = outputs[("reflectance", 0, 0)]
             mask = outputs[("mask", 0, 0)]
 
-            # remove specular by replacing masked pixels with local average
+            # remove specular by replacing masked pixels with a normalized local average
             non_spec = input_color * (1 - mask)
             kernel = 7
-            neigh = F.avg_pool2d(non_spec, kernel, stride=1, padding=kernel//2)
+            padding = kernel // 2
+            # sum of non-spec colours
+            sum_non = F.avg_pool2d(non_spec, kernel, stride=1, padding=padding) * (kernel**2)
+            # count of valid neighbours (1-mask) in kernel
+            count = F.avg_pool2d((1 - mask), kernel, stride=1, padding=padding) * (kernel**2)
+            neigh = sum_non / (count + 1e-6)
             filtered = input_color * (1 - mask) + neigh * mask
             # for debugging: keep filtered image so we can log it
             outputs[("filtered", 0, 0)] = filtered
