@@ -273,7 +273,7 @@ def evaluate(opt):
         pred_depth_my[pred_depth_my > MAX_DEPTH] = MAX_DEPTH
 
         # tensorboard log
-        if writer is not None:
+        if writer is not None and i < 20:
             # convert depth maps to coloured images
             def depth_to_colormap(dmap):
                 disp = dmap.copy().astype(np.float32)
