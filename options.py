@@ -218,13 +218,13 @@ class MonodepthOptions:
                                         "from the original monodepth paper",
                                    action="store_true")
 
-          # Visualization
-          self.parser.add_argument("--visualize",
-                                   help="if set will display ground truth and predicted depth maps during evaluation",
+          # visualization to tensorboard only
+          self.parser.add_argument("--viz_tensorboard",
+                                   help="if set will log gt/pred visualizations to tensorboard",
                                    action="store_true")
-          self.parser.add_argument("--viz_save_dir",
+          self.parser.add_argument("--viz_tensorboard_dir",
                                    type=str,
-                                   help="optional directory to save visualization images when display is unavailable",
+                                   help="directory for tensorboard logs (used if --viz_tensorboard)",
                                    default=None)
 
         

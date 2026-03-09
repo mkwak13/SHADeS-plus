@@ -209,6 +209,19 @@ def evaluate(opt):
 
     print("-> Mono evaluation - using median scaling")
 
+    # optional tensorboard writer for visualizations
+    writer = None
+    if opt.viz_tensorboard:
+        try:
+            from tensorboardX import SummaryWriter
+        except ImportError:
+            print("[warning] tensorboardX not installed, cannot log to tensorboard")
+        else:
+            tbdir = opt.viz_tensorboard_dir or opt.log_dir or os.path.join(opt.load_weights_folder, "tb_viz")
+            os.makedirs(tbdir, exist_ok=True)
+            writer = SummaryWriter(tbdir)
+            print(f"-> Tensorboard visualizations will be written to {tbdir}")
+
     errors_all = []
     errors_spec = []
     errors_nonspec = []
@@ -253,49 +266,6 @@ def evaluate(opt):
         pred_depth_my[pred_depth_my < MIN_DEPTH] = MIN_DEPTH
         pred_depth_my[pred_depth_my > MAX_DEPTH] = MAX_DEPTH
 
-        # visualize or save visualizations if requested
-        if opt.visualize:
-            # convert a depth map to a colored image for easier viewing
-            def depth_to_colormap(dmap):
-                # normalize to 0..1
-                disp = dmap.copy().astype(np.float32)
-                disp = disp - disp.min()
-                if disp.max() > 0:
-                    disp = disp / disp.max()
-                disp = (255 * disp).astype(np.uint8)
-                return cv2.applyColorMap(disp, cv2.COLORMAP_JET)
-
-            gt_vis = depth_to_colormap(gt_depth)
-            pred_vis = depth_to_colormap(pred_depth_my)
-            combined = np.hstack((gt_vis, pred_vis))
-
-            shown = False
-            if opt.viz_save_dir:
-                os.makedirs(opt.viz_save_dir, exist_ok=True)
-                fname = os.path.join(opt.viz_save_dir, f"viz_{i:06d}.png")
-                cv2.imwrite(fname, combined)
-                shown = True
-
-            if not shown:
-                try:
-                    cv2.imshow("gt vs pred", combined)
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord('q'):
-                        print("Stopping evaluation due to user request")
-                        break
-                except cv2.error as e:
-                    # display not available (e.g. headless server)
-                    if opt.viz_save_dir is not None:
-                        # already saved above
-                        pass
-                    else:
-                        # create a default folder next to weights if possible
-                        save_folder = os.path.join(opt.load_weights_folder, "viz_images")
-                        os.makedirs(save_folder, exist_ok=True)
-                        fname = os.path.join(save_folder, f"viz_{i:06d}.png")
-                        cv2.imwrite(fname, combined)
-                        if i == 0:
-                            print(f"[warning] display unavailable, saving visualizations to {save_folder}")
 
         # Overall
         errors_all.append(
