@@ -4,13 +4,11 @@ import os
 import cv2
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from layers import disp_to_depth
 from utils import readlines
 from options import MonodepthOptions
-import datasets
 import networks
 
 cv2.setNumThreads(0)
@@ -31,23 +29,6 @@ def inference(opt):
 
     encoder_dict = torch.load(encoder_path)
 
-    dataset = datasets.C3VDDataset(
-        opt.data_path,
-        filenames,
-        encoder_dict['height'],
-        encoder_dict['width'],
-        [0], 1,
-        is_train=False,
-        img_ext=".png"
-    )
-
-    dataloader = DataLoader(
-        dataset, 1,
-        shuffle=False,
-        num_workers=opt.num_workers,
-        pin_memory=True
-    )
-
     # ===== model =====
     if "shadespp" in opt.load_weights_folder.lower():
         num_in = 2
@@ -63,10 +44,10 @@ def inference(opt):
 
     depth_decoder = networks.DepthDecoder(encoder.num_ch_enc, scales=range(4))
 
-    encoder_dict = torch.load(encoder_path)
+    # ===== FIX (state_dict filter) =====
     model_dict = encoder.state_dict()
-
     encoder.load_state_dict({k: v for k, v in encoder_dict.items() if k in model_dict})
+
     depth_decoder.load_state_dict(torch.load(decoder_path))
 
     encoder.cuda().eval()
@@ -95,25 +76,34 @@ def inference(opt):
     print("-> Running inference...")
 
     with torch.no_grad():
-        for idx, data in enumerate(dataloader):
-            input_color = data[("color", 0, 0)].cuda()
+        for idx, img_path in enumerate(filenames):
+
+            img = cv2.imread(img_path)
+            if img is None:
+                continue
+
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+            img = cv2.resize(img, (encoder_dict['width'], encoder_dict['height']))
+            img = img.astype(np.float32) / 255.0
+
+            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
 
             if num_in == 2:
-                feat = decompose_encoder(input_color)
+                feat = decompose_encoder(img)
                 reflectance, light, mask_soft = decompose_decoder(feat)
-                depth_input = torch.cat([input_color, reflectance, mask_soft], dim=1)
+                depth_input = torch.cat([img, reflectance, mask_soft], dim=1)
             else:
-                depth_input = input_color
+                depth_input = img
 
             output = depth_decoder(encoder(depth_input))
             disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
 
             disp_np = disp[0, 0].cpu().numpy()
 
-            # normalize
+            # normalize for visualization
             disp_norm = (disp_np - disp_np.min()) / (disp_np.max() - disp_np.min() + 1e-8)
 
-            # ===== TensorBoard logging =====
             writer.add_image(
                 "disp",
                 disp_norm,
