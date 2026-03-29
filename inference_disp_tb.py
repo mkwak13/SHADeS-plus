@@ -36,7 +36,7 @@ def inference(opt):
         filenames,
         encoder_dict['height'],
         encoder_dict['width'],
-        [0], 4,
+        [0], 1,
         is_train=False,
         img_ext=".png"
     )
