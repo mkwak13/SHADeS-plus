@@ -116,6 +116,16 @@ def inference(opt):
                 dataformats='HWC'
             )
 
+            # ===== input image =====
+            img_np = img[0].cpu().permute(1, 2, 0).numpy()
+
+            writer.add_image(
+                "input",
+                img_np,
+                global_step=idx,
+                dataformats='HWC'
+            )
+
     writer.close()
     print("-> Done (TensorBoard)")
 
